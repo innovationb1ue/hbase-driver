@@ -1,4 +1,3 @@
-import Table_pb2 as _Table_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -41,17 +40,25 @@ MINUTES: TimeUnit
 HOURS: TimeUnit
 DAYS: TimeUnit
 
+class TableName(_message.Message):
+    __slots__ = ("namespace", "qualifier")
+    NAMESPACE_FIELD_NUMBER: _ClassVar[int]
+    QUALIFIER_FIELD_NUMBER: _ClassVar[int]
+    namespace: bytes
+    qualifier: bytes
+    def __init__(self, namespace: _Optional[bytes] = ..., qualifier: _Optional[bytes] = ...) -> None: ...
+
 class TableSchema(_message.Message):
     __slots__ = ("table_name", "attributes", "column_families", "configuration")
     TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
     ATTRIBUTES_FIELD_NUMBER: _ClassVar[int]
     COLUMN_FAMILIES_FIELD_NUMBER: _ClassVar[int]
     CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
-    table_name: _Table_pb2.TableName
+    table_name: TableName
     attributes: _containers.RepeatedCompositeFieldContainer[BytesBytesPair]
     column_families: _containers.RepeatedCompositeFieldContainer[ColumnFamilySchema]
     configuration: _containers.RepeatedCompositeFieldContainer[NameStringPair]
-    def __init__(self, table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., attributes: _Optional[_Iterable[_Union[BytesBytesPair, _Mapping]]] = ..., column_families: _Optional[_Iterable[_Union[ColumnFamilySchema, _Mapping]]] = ..., configuration: _Optional[_Iterable[_Union[NameStringPair, _Mapping]]] = ...) -> None: ...
+    def __init__(self, table_name: _Optional[_Union[TableName, _Mapping]] = ..., attributes: _Optional[_Iterable[_Union[BytesBytesPair, _Mapping]]] = ..., column_families: _Optional[_Iterable[_Union[ColumnFamilySchema, _Mapping]]] = ..., configuration: _Optional[_Iterable[_Union[NameStringPair, _Mapping]]] = ...) -> None: ...
 
 class TableState(_message.Message):
     __slots__ = ("state",)
@@ -89,13 +96,13 @@ class RegionInfo(_message.Message):
     SPLIT_FIELD_NUMBER: _ClassVar[int]
     REPLICA_ID_FIELD_NUMBER: _ClassVar[int]
     region_id: int
-    table_name: _Table_pb2.TableName
+    table_name: TableName
     start_key: bytes
     end_key: bytes
     offline: bool
     split: bool
     replica_id: int
-    def __init__(self, region_id: _Optional[int] = ..., table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., start_key: _Optional[bytes] = ..., end_key: _Optional[bytes] = ..., offline: bool = ..., split: bool = ..., replica_id: _Optional[int] = ...) -> None: ...
+    def __init__(self, region_id: _Optional[int] = ..., table_name: _Optional[_Union[TableName, _Mapping]] = ..., start_key: _Optional[bytes] = ..., end_key: _Optional[bytes] = ..., offline: bool = ..., split: bool = ..., replica_id: _Optional[int] = ...) -> None: ...
 
 class FavoredNodes(_message.Message):
     __slots__ = ("favored_node",)
@@ -118,6 +125,13 @@ class RegionSpecifier(_message.Message):
     def __init__(self, type: _Optional[_Union[RegionSpecifier.RegionSpecifierType, str]] = ..., value: _Optional[bytes] = ...) -> None: ...
 
 class TimeRange(_message.Message):
+    __slots__ = ("to",)
+    FROM_FIELD_NUMBER: _ClassVar[int]
+    TO_FIELD_NUMBER: _ClassVar[int]
+    to: int
+    def __init__(self, to: _Optional[int] = ..., **kwargs) -> None: ...
+
+class TimeRangeTracker(_message.Message):
     __slots__ = ("to",)
     FROM_FIELD_NUMBER: _ClassVar[int]
     TO_FIELD_NUMBER: _ClassVar[int]
@@ -179,32 +193,6 @@ class NameInt64Pair(_message.Message):
     name: str
     value: int
     def __init__(self, name: _Optional[str] = ..., value: _Optional[int] = ...) -> None: ...
-
-class SnapshotDescription(_message.Message):
-    __slots__ = ("name", "table", "creation_time", "type", "version", "owner", "ttl")
-    class Type(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-        __slots__ = ()
-        DISABLED: _ClassVar[SnapshotDescription.Type]
-        FLUSH: _ClassVar[SnapshotDescription.Type]
-        SKIPFLUSH: _ClassVar[SnapshotDescription.Type]
-    DISABLED: SnapshotDescription.Type
-    FLUSH: SnapshotDescription.Type
-    SKIPFLUSH: SnapshotDescription.Type
-    NAME_FIELD_NUMBER: _ClassVar[int]
-    TABLE_FIELD_NUMBER: _ClassVar[int]
-    CREATION_TIME_FIELD_NUMBER: _ClassVar[int]
-    TYPE_FIELD_NUMBER: _ClassVar[int]
-    VERSION_FIELD_NUMBER: _ClassVar[int]
-    OWNER_FIELD_NUMBER: _ClassVar[int]
-    TTL_FIELD_NUMBER: _ClassVar[int]
-    name: str
-    table: str
-    creation_time: int
-    type: SnapshotDescription.Type
-    version: int
-    owner: str
-    ttl: int
-    def __init__(self, name: _Optional[str] = ..., table: _Optional[str] = ..., creation_time: _Optional[int] = ..., type: _Optional[_Union[SnapshotDescription.Type, str]] = ..., version: _Optional[int] = ..., owner: _Optional[str] = ..., ttl: _Optional[int] = ...) -> None: ...
 
 class ProcedureDescription(_message.Message):
     __slots__ = ("signature", "instance", "creation_time", "configuration")
@@ -283,3 +271,49 @@ class RegionServerInfo(_message.Message):
     infoPort: int
     version_info: VersionInfo
     def __init__(self, infoPort: _Optional[int] = ..., version_info: _Optional[_Union[VersionInfo, _Mapping]] = ...) -> None: ...
+
+class RegionExceptionMessage(_message.Message):
+    __slots__ = ("region", "exception")
+    REGION_FIELD_NUMBER: _ClassVar[int]
+    EXCEPTION_FIELD_NUMBER: _ClassVar[int]
+    region: RegionSpecifier
+    exception: NameBytesPair
+    def __init__(self, region: _Optional[_Union[RegionSpecifier, _Mapping]] = ..., exception: _Optional[_Union[NameBytesPair, _Mapping]] = ...) -> None: ...
+
+class CacheEvictionStats(_message.Message):
+    __slots__ = ("evicted_blocks", "bytes_evicted", "max_cache_size", "exception")
+    EVICTED_BLOCKS_FIELD_NUMBER: _ClassVar[int]
+    BYTES_EVICTED_FIELD_NUMBER: _ClassVar[int]
+    MAX_CACHE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    EXCEPTION_FIELD_NUMBER: _ClassVar[int]
+    evicted_blocks: int
+    bytes_evicted: int
+    max_cache_size: int
+    exception: _containers.RepeatedCompositeFieldContainer[RegionExceptionMessage]
+    def __init__(self, evicted_blocks: _Optional[int] = ..., bytes_evicted: _Optional[int] = ..., max_cache_size: _Optional[int] = ..., exception: _Optional[_Iterable[_Union[RegionExceptionMessage, _Mapping]]] = ...) -> None: ...
+
+class RegionLocation(_message.Message):
+    __slots__ = ("region_info", "server_name", "seq_num")
+    REGION_INFO_FIELD_NUMBER: _ClassVar[int]
+    SERVER_NAME_FIELD_NUMBER: _ClassVar[int]
+    SEQ_NUM_FIELD_NUMBER: _ClassVar[int]
+    region_info: RegionInfo
+    server_name: ServerName
+    seq_num: int
+    def __init__(self, region_info: _Optional[_Union[RegionInfo, _Mapping]] = ..., server_name: _Optional[_Union[ServerName, _Mapping]] = ..., seq_num: _Optional[int] = ...) -> None: ...
+
+class LogRequest(_message.Message):
+    __slots__ = ("log_class_name", "log_message")
+    LOG_CLASS_NAME_FIELD_NUMBER: _ClassVar[int]
+    LOG_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    log_class_name: str
+    log_message: bytes
+    def __init__(self, log_class_name: _Optional[str] = ..., log_message: _Optional[bytes] = ...) -> None: ...
+
+class LogEntry(_message.Message):
+    __slots__ = ("log_class_name", "log_message")
+    LOG_CLASS_NAME_FIELD_NUMBER: _ClassVar[int]
+    LOG_MESSAGE_FIELD_NUMBER: _ClassVar[int]
+    log_class_name: str
+    log_message: bytes
+    def __init__(self, log_class_name: _Optional[str] = ..., log_message: _Optional[bytes] = ...) -> None: ...

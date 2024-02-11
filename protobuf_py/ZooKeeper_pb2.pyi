@@ -1,11 +1,9 @@
-import Table_pb2 as _Table_pb2
 import HBase_pb2 as _HBase_pb2
 import ClusterStatus_pb2 as _ClusterStatus_pb2
-from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
 from google.protobuf import message as _message
-from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
+from typing import ClassVar as _ClassVar, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
@@ -70,50 +68,6 @@ class DeprecatedTableState(_message.Message):
     STATE_FIELD_NUMBER: _ClassVar[int]
     state: DeprecatedTableState.State
     def __init__(self, state: _Optional[_Union[DeprecatedTableState.State, str]] = ...) -> None: ...
-
-class TableCF(_message.Message):
-    __slots__ = ("table_name", "families")
-    TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
-    FAMILIES_FIELD_NUMBER: _ClassVar[int]
-    table_name: _Table_pb2.TableName
-    families: _containers.RepeatedScalarFieldContainer[bytes]
-    def __init__(self, table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., families: _Optional[_Iterable[bytes]] = ...) -> None: ...
-
-class ReplicationPeer(_message.Message):
-    __slots__ = ("clusterkey", "replicationEndpointImpl", "data", "configuration", "table_cfs", "namespaces", "bandwidth")
-    CLUSTERKEY_FIELD_NUMBER: _ClassVar[int]
-    REPLICATIONENDPOINTIMPL_FIELD_NUMBER: _ClassVar[int]
-    DATA_FIELD_NUMBER: _ClassVar[int]
-    CONFIGURATION_FIELD_NUMBER: _ClassVar[int]
-    TABLE_CFS_FIELD_NUMBER: _ClassVar[int]
-    NAMESPACES_FIELD_NUMBER: _ClassVar[int]
-    BANDWIDTH_FIELD_NUMBER: _ClassVar[int]
-    clusterkey: str
-    replicationEndpointImpl: str
-    data: _containers.RepeatedCompositeFieldContainer[_HBase_pb2.BytesBytesPair]
-    configuration: _containers.RepeatedCompositeFieldContainer[_HBase_pb2.NameStringPair]
-    table_cfs: _containers.RepeatedCompositeFieldContainer[TableCF]
-    namespaces: _containers.RepeatedScalarFieldContainer[bytes]
-    bandwidth: int
-    def __init__(self, clusterkey: _Optional[str] = ..., replicationEndpointImpl: _Optional[str] = ..., data: _Optional[_Iterable[_Union[_HBase_pb2.BytesBytesPair, _Mapping]]] = ..., configuration: _Optional[_Iterable[_Union[_HBase_pb2.NameStringPair, _Mapping]]] = ..., table_cfs: _Optional[_Iterable[_Union[TableCF, _Mapping]]] = ..., namespaces: _Optional[_Iterable[bytes]] = ..., bandwidth: _Optional[int] = ...) -> None: ...
-
-class ReplicationState(_message.Message):
-    __slots__ = ("state",)
-    class State(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
-        __slots__ = ()
-        ENABLED: _ClassVar[ReplicationState.State]
-        DISABLED: _ClassVar[ReplicationState.State]
-    ENABLED: ReplicationState.State
-    DISABLED: ReplicationState.State
-    STATE_FIELD_NUMBER: _ClassVar[int]
-    state: ReplicationState.State
-    def __init__(self, state: _Optional[_Union[ReplicationState.State, str]] = ...) -> None: ...
-
-class ReplicationHLogPosition(_message.Message):
-    __slots__ = ("position",)
-    POSITION_FIELD_NUMBER: _ClassVar[int]
-    position: int
-    def __init__(self, position: _Optional[int] = ...) -> None: ...
 
 class SwitchState(_message.Message):
     __slots__ = ("enabled",)

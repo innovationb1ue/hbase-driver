@@ -1,69 +1,51 @@
+import random
 import socket
 from io import StringIO
 from struct import pack, unpack
 
-from Client_pb2 import GetRequest
-from RPC_pb2 import ConnectionHeader
+from google.protobuf.pyext import _message
+
+from Client_pb2 import GetRequest, Column
+from HBase_pb2 import ColumnFamilySchema
+from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
+from protobuf_py.Master_pb2 import CreateTableRequest
+from src.Connection import Connection
+from src.response import response_types
+from util.varint import to_varint, decoder
+
+from google.protobuf import message
 
 
-class MasterConnection:
+class MasterConnection(Connection):
+    service_name = "MasterService"
+
     def __init__(self):
-        self.conn: socket.socket = None
+        super().__init__("MasterService")
 
-    def connect(self, host, port, timeout=3, user="pythonHbaseDriver"):
-        self.conn = socket.create_connection((host, port), timeout=timeout)
-        ch = ConnectionHeader()
-        ch.user_info.effective_user = user
-        ch.service_name = "ClientService"
-        serialized = ch.SerializeToString()
-        # 6 bytes : 'HBas' + RPC_VERSION(0) + AUTH_CODE(80) +
-        msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
-        self.conn.send(msg)
+    def create_table(self, namespace, table, columns):
+        rq = CreateTableRequest()
+        rq.table_schema.table_name.namespace = namespace.encode("utf-8")
+        rq.table_schema.table_name.qualifier = table.encode("utf-8")
+        # add all column definitions
+        for c in columns:
+            rq.table_schema.column_families.append(ColumnFamilySchema(name=c.encode("utf-8")))
+        rpc_serialized = rq.SerializeToString()
 
-    def get(self):
-        rq = GetRequest()
-        rq.get.row = "hbase:meta,,"
+        # get RPC header
+        serialized_header: bytes = self._get_call_header_bytes("CreateTable")
 
-    def create_table(self):
-        rq = CreateTableRequest
+        # length of data
+        rpc_length_bytes: bytes = to_varint(len(rpc_serialized)).encode("utf-8")
 
-    def receive_rpc(self, call_id, rq, data=None):
-        # Total message length is going to be the first four bytes
-        # (little-endian uint32)
-        try:
-            msg_length = self._recv_n(self.conn, 4)
-            if msg_length is None:
-                raise
-            msg_length = unpack(">I", msg_length)[0]
-            # The message is then going to be however many bytes the first four
-            # bytes specified. We don't want to overread or underread as that'll
-            # cause havoc.
-            full_data = self._recv_n(self.conn, msg_length)
-        except socket.error:
-            pass
-        # Pass in the full data as well as your current position to the
-        # decoder. It'll then return two variables:
-        #       - next_pos: The number of bytes of data specified by the varint
-        #       - pos: The starting location of the data to read.
-        next_pos, pos = decoder(full_data, 0)
-        header = ResponseHeader()
-        header.ParseFromString(full_data[pos: pos + next_pos])
-        pos += next_pos
-        if header.call_id != call_id:
-            # call_ids don't match? Looks like a different thread nabbed our
-            # response.
-            return self._bad_call_id(call_id, rq, header.call_id, full_data)
+        # 4byte total message size + header_size + header size
+        total_size = 4 + 1 + len(serialized_header) + len(rpc_length_bytes) + len(rpc_serialized)
+        print("total size = ", total_size)
 
-    # Receives exactly n bytes from the socket. Will block until n bytes are
-    # received. If a socket is closed (RegionServer died) then raise an
-    # exception that goes all the way back to the main client
-    def _recv_n(self, sock: socket.socket, n):
-        partial_str = StringIO()
-        partial_len = 0
-        while partial_len < n:
-            packet = sock.recv(n - partial_len)
-            if not packet:
-                raise socket.error()
-            partial_len += len(packet)
-            partial_str.write(packet)
-        return partial_str.getvalue()
+        # Total length doesn't include the initial 4 bytes (for the total_length uint32)
+        # size(4bytes) + header size(1byte)
+        to_send = pack(">IB", total_size - 4, len(serialized_header))
+        to_send += serialized_header + rpc_length_bytes + rpc_serialized
+
+        self.conn.send(to_send)
+
+        # todo: check regions online.

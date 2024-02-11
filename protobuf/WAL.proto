@@ -16,15 +16,14 @@
  * limitations under the License.
  */
 syntax = "proto2";
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "WALProtos";
 option java_generic_services = false;
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
-import "Table.proto";
 import "HBase.proto";
 
 message WALHeader {
@@ -67,14 +66,16 @@ message WALKey {
   optional uint64 nonce = 10;
   optional uint64 orig_sequence_number = 11;
   repeated Attribute extended_attributes = 12;
-/*
-  optional CustomEntryType custom_entry_type = 9;
 
-  enum CustomEntryType {
-    COMPACTION = 0;
-  }
-*/
+  /*
+    optional CustomEntryType custom_entry_type = 9;
+
+    enum CustomEntryType {
+      COMPACTION = 0;
+    }
+  */
 }
+
 message Attribute {
   required string key = 1;
   required bytes value = 2;
@@ -83,6 +84,7 @@ message Attribute {
 enum ScopeType {
   REPLICATION_SCOPE_LOCAL = 0;
   REPLICATION_SCOPE_GLOBAL = 1;
+  REPLICATION_SCOPE_SERIAL = 2;
 }
 
 message FamilyScope {
@@ -150,6 +152,8 @@ message BulkLoadDescriptor {
   required bytes encoded_region_name = 2;
   repeated StoreDescriptor stores = 3;
   required int64 bulkload_seq_num = 4;
+  repeated string cluster_ids = 5;
+  optional bool replicate = 6 [default = true];
 }
 
 /**

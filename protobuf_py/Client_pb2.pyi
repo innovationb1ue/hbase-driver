@@ -1,4 +1,3 @@
-import Table_pb2 as _Table_pb2
 import HBase_pb2 as _HBase_pb2
 import Filter_pb2 as _Filter_pb2
 import Cell_pb2 as _Cell_pb2
@@ -332,7 +331,7 @@ class ScanResponse(_message.Message):
     def __init__(self, cells_per_result: _Optional[_Iterable[int]] = ..., scanner_id: _Optional[int] = ..., more_results: bool = ..., ttl: _Optional[int] = ..., results: _Optional[_Iterable[_Union[Result, _Mapping]]] = ..., stale: bool = ..., partial_flag_per_result: _Optional[_Iterable[bool]] = ..., more_results_in_region: bool = ..., heartbeat_message: bool = ..., scan_metrics: _Optional[_Union[_MapReduce_pb2.ScanMetrics, _Mapping]] = ..., mvcc_read_point: _Optional[int] = ..., cursor: _Optional[_Union[Cursor, _Mapping]] = ...) -> None: ...
 
 class BulkLoadHFileRequest(_message.Message):
-    __slots__ = ("region", "family_path", "assign_seq_num", "fs_token", "bulk_token", "copy_file")
+    __slots__ = ("region", "family_path", "assign_seq_num", "fs_token", "bulk_token", "copy_file", "cluster_ids", "replicate")
     class FamilyPath(_message.Message):
         __slots__ = ("family", "path")
         FAMILY_FIELD_NUMBER: _ClassVar[int]
@@ -346,13 +345,17 @@ class BulkLoadHFileRequest(_message.Message):
     FS_TOKEN_FIELD_NUMBER: _ClassVar[int]
     BULK_TOKEN_FIELD_NUMBER: _ClassVar[int]
     COPY_FILE_FIELD_NUMBER: _ClassVar[int]
+    CLUSTER_IDS_FIELD_NUMBER: _ClassVar[int]
+    REPLICATE_FIELD_NUMBER: _ClassVar[int]
     region: _HBase_pb2.RegionSpecifier
     family_path: _containers.RepeatedCompositeFieldContainer[BulkLoadHFileRequest.FamilyPath]
     assign_seq_num: bool
     fs_token: DelegationToken
     bulk_token: str
     copy_file: bool
-    def __init__(self, region: _Optional[_Union[_HBase_pb2.RegionSpecifier, _Mapping]] = ..., family_path: _Optional[_Iterable[_Union[BulkLoadHFileRequest.FamilyPath, _Mapping]]] = ..., assign_seq_num: bool = ..., fs_token: _Optional[_Union[DelegationToken, _Mapping]] = ..., bulk_token: _Optional[str] = ..., copy_file: bool = ...) -> None: ...
+    cluster_ids: _containers.RepeatedScalarFieldContainer[str]
+    replicate: bool
+    def __init__(self, region: _Optional[_Union[_HBase_pb2.RegionSpecifier, _Mapping]] = ..., family_path: _Optional[_Iterable[_Union[BulkLoadHFileRequest.FamilyPath, _Mapping]]] = ..., assign_seq_num: bool = ..., fs_token: _Optional[_Union[DelegationToken, _Mapping]] = ..., bulk_token: _Optional[str] = ..., copy_file: bool = ..., cluster_ids: _Optional[_Iterable[str]] = ..., replicate: bool = ...) -> None: ...
 
 class BulkLoadHFileResponse(_message.Message):
     __slots__ = ("loaded",)
@@ -376,9 +379,9 @@ class PrepareBulkLoadRequest(_message.Message):
     __slots__ = ("table_name", "region")
     TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
     REGION_FIELD_NUMBER: _ClassVar[int]
-    table_name: _Table_pb2.TableName
+    table_name: _HBase_pb2.TableName
     region: _HBase_pb2.RegionSpecifier
-    def __init__(self, table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., region: _Optional[_Union[_HBase_pb2.RegionSpecifier, _Mapping]] = ...) -> None: ...
+    def __init__(self, table_name: _Optional[_Union[_HBase_pb2.TableName, _Mapping]] = ..., region: _Optional[_Union[_HBase_pb2.RegionSpecifier, _Mapping]] = ...) -> None: ...
 
 class PrepareBulkLoadResponse(_message.Message):
     __slots__ = ("bulk_token",)

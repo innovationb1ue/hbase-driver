@@ -16,28 +16,37 @@
  * limitations under the License.
  */
 syntax = "proto2";
-
 // This file contains protocol buffers that are used for Admin service.
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "AdminProtos";
 option java_generic_services = true;
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
+import "ClusterStatus.proto";
 import "HBase.proto";
 import "WAL.proto";
+import "Quota.proto";
+import "TooSlowLog.proto";
 
 message GetRegionInfoRequest {
   required RegionSpecifier region = 1;
   optional bool compaction_state = 2;
+  optional bool best_split_row = 3;
 }
 
 message GetRegionInfoResponse {
   required RegionInfo region_info = 1;
   optional CompactionState compaction_state = 2;
   // optional bool DEPRECATED_isRecovering = 3;
+  // True if region is splittable, false otherwise.
+  optional bool splittable = 4;
+  // True if region is mergeable, false otherwise.
+  optional bool mergeable = 5;
+  // Get bestSplitRow
+  optional bytes best_split_row = 6;
 
   enum CompactionState {
     NONE = 0;
@@ -80,6 +89,7 @@ message OpenRegionRequest {
     repeated ServerName favored_nodes = 3;
     // open region for distributedLogReplay
     // optional bool DEPRECATED_openForDistributedLogReplay = 4;
+    optional int64 open_proc_id = 5 [default = -1];
   }
 }
 
@@ -94,7 +104,6 @@ message OpenRegionResponse {
 }
 
 message WarmupRegionRequest {
-
     required RegionInfo regionInfo = 1;
 }
 
@@ -112,6 +121,7 @@ message CloseRegionRequest {
   optional ServerName destination_server = 4;
   // the intended server for this RPC.
   optional uint64 serverStartCode = 5;
+  optional int64 close_proc_id = 6 [default = -1];
 }
 
 message CloseRegionResponse {
@@ -137,21 +147,6 @@ message FlushRegionResponse {
 }
 
 /**
- * Splits the specified region.
- * <p>
- * This method currently flushes the region and then forces a compaction which
- * will then trigger a split.  The flush is done synchronously but the
- * compaction is asynchronous.
- */
-message SplitRegionRequest {
-  required RegionSpecifier region = 1;
-  optional bytes split_point = 2;
-}
-
-message SplitRegionResponse {
-}
-
-/**
  * Compacts the specified region.  Performs a major compaction if specified.
  * <p>
  * This method is asynchronous.
@@ -165,6 +160,14 @@ message CompactRegionRequest {
 message CompactRegionResponse {
 }
 
+message CompactionSwitchRequest {
+  required bool enabled = 1;
+}
+
+message CompactionSwitchResponse {
+  required bool prev_state = 1;
+}
+
 message UpdateFavoredNodesRequest {
   repeated RegionUpdateInfo update_info = 1;
 
@@ -176,22 +179,6 @@ message UpdateFavoredNodesRequest {
 
 message UpdateFavoredNodesResponse {
   optional uint32 response = 1;
-}
-
-/**
- * Merges the specified regions.
- * <p>
- * This method currently closes the regions and then merges them
- */
-message MergeRegionsRequest {
-  required RegionSpecifier region_a = 1;
-  required RegionSpecifier region_b = 2;
-  optional bool forcible = 3 [default = false];
-  // wall clock time from master
-  optional uint64 master_system_time = 4;
-}
-
-message MergeRegionsResponse {
 }
 
 // Protocol buffer version of WAL for replication
@@ -257,6 +244,90 @@ message UpdateConfigurationRequest {
 message UpdateConfigurationResponse {
 }
 
+message GetRegionLoadRequest {
+  optional TableName table_name = 1;
+}
+
+message GetRegionLoadResponse {
+  repeated RegionLoad region_loads = 1;
+}
+
+message ClearCompactionQueuesRequest {
+  repeated string queue_name = 1;
+}
+
+message ClearCompactionQueuesResponse {
+}
+
+message ClearRegionBlockCacheRequest {
+  repeated RegionSpecifier region = 1;
+}
+
+message ClearRegionBlockCacheResponse {
+  required CacheEvictionStats stats = 1;
+}
+
+message RemoteProcedureRequest {
+  required uint64 proc_id = 1;
+  required string proc_class = 2;
+  optional bytes proc_data = 3;
+}
+
+message ExecuteProceduresRequest {
+  repeated OpenRegionRequest open_region = 1;
+  repeated CloseRegionRequest close_region = 2;
+  repeated RemoteProcedureRequest proc = 3;
+}
+
+message ExecuteProceduresResponse {
+}
+
+/**
+ * Slow/Large log (LogRequest) use-case specific RPC request. This request payload will be
+ * converted in bytes and sent to generic RPC API: GetLogEntries
+ * LogRequest message has two params:
+ * 1. log_class_name: SlowLogResponseRequest (for Slow/Large log use-case)
+ * 2. log_message: SlowLogResponseRequest converted in bytes (for Slow/Large log use-case)
+ */
+message SlowLogResponseRequest {
+  enum FilterByOperator {
+    AND = 0;
+    OR = 1;
+  }
+
+  enum LogType {
+    SLOW_LOG = 0;
+    LARGE_LOG = 1;
+  }
+
+  optional string region_name = 1;
+  optional string table_name = 2;
+  optional string client_address = 3;
+  optional string user_name = 4;
+  optional uint32 limit = 5 [default = 10];
+  optional FilterByOperator filter_by_operator = 6 [default = OR];
+  optional LogType log_type = 7;
+}
+
+/**
+ * Slow/Large log (LogEntry) use-case specific RPC response. This response payload will be
+ * converted in bytes by servers and sent as response to generic RPC API: GetLogEntries
+ * LogEntry message has two params:
+ * 1. log_class_name: SlowLogResponses (for Slow/Large log use-case)
+ * 2. log_message: SlowLogResponses converted in bytes (for Slow/Large log use-case)
+ */
+message SlowLogResponses {
+  repeated SlowLogPayload slow_log_payloads = 1;
+}
+
+message ClearSlowLogResponseRequest {
+
+}
+
+message ClearSlowLogResponses {
+  required bool is_cleaned = 1;
+}
+
 service AdminService {
   rpc GetRegionInfo(GetRegionInfoRequest)
     returns(GetRegionInfoResponse);
@@ -279,14 +350,11 @@ service AdminService {
   rpc FlushRegion(FlushRegionRequest)
     returns(FlushRegionResponse);
 
-  rpc SplitRegion(SplitRegionRequest)
-    returns(SplitRegionResponse);
+  rpc CompactionSwitch(CompactionSwitchRequest)
+    returns(CompactionSwitchResponse);
 
   rpc CompactRegion(CompactRegionRequest)
     returns(CompactRegionResponse);
-
-  rpc MergeRegions(MergeRegionsRequest)
-    returns(MergeRegionsResponse);
 
   rpc ReplicateWALEntry(ReplicateWALEntryRequest)
     returns(ReplicateWALEntryResponse);
@@ -308,4 +376,33 @@ service AdminService {
 
   rpc UpdateConfiguration(UpdateConfigurationRequest)
     returns(UpdateConfigurationResponse);
+
+  rpc GetRegionLoad(GetRegionLoadRequest)
+    returns(GetRegionLoadResponse);
+
+  rpc ClearCompactionQueues(ClearCompactionQueuesRequest)
+    returns(ClearCompactionQueuesResponse);
+
+  rpc ClearRegionBlockCache(ClearRegionBlockCacheRequest)
+    returns(ClearRegionBlockCacheResponse);
+
+  /** Fetches the RegionServer's view of space quotas */
+  rpc GetSpaceQuotaSnapshots(GetSpaceQuotaSnapshotsRequest)
+    returns(GetSpaceQuotaSnapshotsResponse);
+
+  rpc ExecuteProcedures(ExecuteProceduresRequest)
+    returns(ExecuteProceduresResponse);
+
+  rpc GetSlowLogResponses(SlowLogResponseRequest)
+    returns(SlowLogResponses);
+
+  rpc GetLargeLogResponses(SlowLogResponseRequest)
+    returns(SlowLogResponses);
+
+  rpc ClearSlowLogsResponses(ClearSlowLogResponseRequest)
+    returns(ClearSlowLogResponses);
+
+  rpc GetLogEntries(LogRequest)
+    returns(LogEntry);
+
 }

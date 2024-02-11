@@ -18,14 +18,21 @@
 syntax = "proto2";
 
 // This file contains protocol buffers that are shared throughout HBase
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "HBaseProtos";
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
-import "Table.proto";
+
+/**
+ * Table Name
+ */
+message TableName {
+  required bytes namespace = 1;
+  required bytes qualifier = 2;
+}
 
 /**
  * Table Schema
@@ -62,7 +69,7 @@ message ColumnFamilySchema {
 }
 
 /**
- * Protocol buffer version of HRegionInfo.
+ * Protocol buffer version of RegionInfo.
  */
 message RegionInfo {
   required uint64 region_id = 1;
@@ -107,6 +114,11 @@ message RegionSpecifier {
  * specified, from = 0, and to = Long.MAX_VALUE
  */
 message TimeRange {
+  optional uint64 from = 1;
+  optional uint64 to = 2;
+}
+
+message TimeRangeTracker {
   optional uint64 from = 1;
   optional uint64 to = 2;
 }
@@ -163,23 +175,7 @@ message NameInt64Pair {
   optional int64 value = 2;
 }
 
-/**
- * Description of the snapshot to take
- */
-message SnapshotDescription {
-  required string name = 1;
-  optional string table = 2; // not needed for delete, but checked for in taking snapshot
-  optional int64 creation_time = 3 [default = 0];
-  enum Type {
-    DISABLED = 0;
-    FLUSH = 1;
-    SKIPFLUSH = 2;
-  }
-  optional Type type = 4 [default = FLUSH];
-  optional int32 version = 5;
-  optional string owner = 6;
-  optional int64 ttl = 7 [default = 0];
-}
+
 
 /**
  * Description of the distributed procedure to take
@@ -244,4 +240,32 @@ message VersionInfo {
 message RegionServerInfo {
   optional int32 infoPort = 1;
   optional VersionInfo version_info = 2;
+}
+
+message RegionExceptionMessage {
+  required RegionSpecifier region = 1;
+  required NameBytesPair exception = 2;
+}
+
+message CacheEvictionStats {
+  optional int64 evicted_blocks = 1;
+  optional int64 bytes_evicted = 2;
+  optional int64 max_cache_size = 3;
+  repeated RegionExceptionMessage exception = 4;
+}
+
+message RegionLocation {
+  required RegionInfo region_info = 1;
+  optional ServerName server_name = 2;
+  required int64 seq_num = 3;
+}
+
+message LogRequest {
+  required string log_class_name = 1;
+  required bytes log_message = 2;
+}
+
+message LogEntry {
+  required string log_class_name = 1;
+  required bytes log_message = 2;
 }

@@ -18,9 +18,9 @@
 syntax = "proto2";
 
 // This file contains protocol buffers that are used for filters
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "FilterProtos";
 option java_generic_services = true;
 option java_generate_equals_and_hash = true;
@@ -94,6 +94,7 @@ message FirstKeyValueMatchingQualifiersFilter {
 
 message FuzzyRowFilter {
   repeated BytesBytesPair fuzzy_keys_data = 1;
+  optional bool is_mask_v2 = 2;
 }
 
 message InclusiveStopFilter {

@@ -1,3 +1,4 @@
+import AccessControl_pb2 as _AccessControl_pb2
 import FS_pb2 as _FS_pb2
 import HBase_pb2 as _HBase_pb2
 from google.protobuf.internal import containers as _containers
@@ -7,6 +8,36 @@ from google.protobuf import message as _message
 from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Mapping, Optional as _Optional, Union as _Union
 
 DESCRIPTOR: _descriptor.FileDescriptor
+
+class SnapshotDescription(_message.Message):
+    __slots__ = ("name", "table", "creation_time", "type", "version", "owner", "users_and_permissions", "ttl", "max_file_size")
+    class Type(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
+        __slots__ = ()
+        DISABLED: _ClassVar[SnapshotDescription.Type]
+        FLUSH: _ClassVar[SnapshotDescription.Type]
+        SKIPFLUSH: _ClassVar[SnapshotDescription.Type]
+    DISABLED: SnapshotDescription.Type
+    FLUSH: SnapshotDescription.Type
+    SKIPFLUSH: SnapshotDescription.Type
+    NAME_FIELD_NUMBER: _ClassVar[int]
+    TABLE_FIELD_NUMBER: _ClassVar[int]
+    CREATION_TIME_FIELD_NUMBER: _ClassVar[int]
+    TYPE_FIELD_NUMBER: _ClassVar[int]
+    VERSION_FIELD_NUMBER: _ClassVar[int]
+    OWNER_FIELD_NUMBER: _ClassVar[int]
+    USERS_AND_PERMISSIONS_FIELD_NUMBER: _ClassVar[int]
+    TTL_FIELD_NUMBER: _ClassVar[int]
+    MAX_FILE_SIZE_FIELD_NUMBER: _ClassVar[int]
+    name: str
+    table: str
+    creation_time: int
+    type: SnapshotDescription.Type
+    version: int
+    owner: str
+    users_and_permissions: _AccessControl_pb2.UsersAndPermissions
+    ttl: int
+    max_file_size: int
+    def __init__(self, name: _Optional[str] = ..., table: _Optional[str] = ..., creation_time: _Optional[int] = ..., type: _Optional[_Union[SnapshotDescription.Type, str]] = ..., version: _Optional[int] = ..., owner: _Optional[str] = ..., users_and_permissions: _Optional[_Union[_AccessControl_pb2.UsersAndPermissions, _Mapping]] = ..., ttl: _Optional[int] = ..., max_file_size: _Optional[int] = ...) -> None: ...
 
 class SnapshotFileInfo(_message.Message):
     __slots__ = ("type", "hfile", "wal_server", "wal_name")

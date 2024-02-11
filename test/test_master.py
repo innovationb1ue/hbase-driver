@@ -1,10 +1,16 @@
 from src.master import MasterConnection
+from src.regionserver import RsConnection
+
+host = "127.0.0.1"
+port = 16000
 
 
 def test_connect_master():
-    host = "127.0.0.1"
-    port = 16000
     client = MasterConnection()
     client.connect(host, port)
-    b = client.conn.recv(4)
-    print(b)
+
+
+def test_create_table():
+    client = MasterConnection()
+    client.connect(host, port)
+    client.create_table("", "test_table", ["cf1", 'cf2'])

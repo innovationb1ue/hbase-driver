@@ -107,10 +107,12 @@ class FirstKeyValueMatchingQualifiersFilter(_message.Message):
     def __init__(self, qualifiers: _Optional[_Iterable[bytes]] = ...) -> None: ...
 
 class FuzzyRowFilter(_message.Message):
-    __slots__ = ("fuzzy_keys_data",)
+    __slots__ = ("fuzzy_keys_data", "is_mask_v2")
     FUZZY_KEYS_DATA_FIELD_NUMBER: _ClassVar[int]
+    IS_MASK_V2_FIELD_NUMBER: _ClassVar[int]
     fuzzy_keys_data: _containers.RepeatedCompositeFieldContainer[_HBase_pb2.BytesBytesPair]
-    def __init__(self, fuzzy_keys_data: _Optional[_Iterable[_Union[_HBase_pb2.BytesBytesPair, _Mapping]]] = ...) -> None: ...
+    is_mask_v2: bool
+    def __init__(self, fuzzy_keys_data: _Optional[_Iterable[_Union[_HBase_pb2.BytesBytesPair, _Mapping]]] = ..., is_mask_v2: bool = ...) -> None: ...
 
 class InclusiveStopFilter(_message.Message):
     __slots__ = ("stop_row_key",)

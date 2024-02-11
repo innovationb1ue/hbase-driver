@@ -15,14 +15,14 @@ _sym_db = _symbol_database.Default()
 import test_pb2 as test__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16test_rpc_service.proto\x1a\ntest.proto2\x8a\x02\n\x14TestProtobufRpcProto\x12/\n\x04ping\x12\x12.EmptyRequestProto\x1a\x13.EmptyResponseProto\x12-\n\x04\x65\x63ho\x12\x11.EchoRequestProto\x1a\x12.EchoResponseProto\x12\x30\n\x05\x65rror\x12\x12.EmptyRequestProto\x1a\x13.EmptyResponseProto\x12\x30\n\x05pause\x12\x12.PauseRequestProto\x1a\x13.EmptyResponseProto\x12.\n\x04\x61\x64\x64r\x12\x12.EmptyRequestProto\x1a\x12.AddrResponseProtoBL\n.org.apache.hadoop.hbase.ipc.protobuf.generatedB\x14TestRpcServiceProtos\x88\x01\x01\xa0\x01\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x16test_rpc_service.proto\x12\rhbase.test.pb\x1a\ntest.proto2\x96\x03\n\x14TestProtobufRpcProto\x12K\n\x04ping\x12 .hbase.test.pb.EmptyRequestProto\x1a!.hbase.test.pb.EmptyResponseProto\x12I\n\x04\x65\x63ho\x12\x1f.hbase.test.pb.EchoRequestProto\x1a .hbase.test.pb.EchoResponseProto\x12L\n\x05\x65rror\x12 .hbase.test.pb.EmptyRequestProto\x1a!.hbase.test.pb.EmptyResponseProto\x12L\n\x05pause\x12 .hbase.test.pb.PauseRequestProto\x1a!.hbase.test.pb.EmptyResponseProto\x12J\n\x04\x61\x64\x64r\x12 .hbase.test.pb.EmptyRequestProto\x1a .hbase.test.pb.AddrResponseProtoBS\n5org.apache.hadoop.hbase.shaded.ipc.protobuf.generatedB\x14TestRpcServiceProtos\x88\x01\x01\xa0\x01\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'test_rpc_service_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['DESCRIPTOR']._options = None
-  _globals['DESCRIPTOR']._serialized_options = b'\n.org.apache.hadoop.hbase.ipc.protobuf.generatedB\024TestRpcServiceProtos\210\001\001\240\001\001'
-  _globals['_TESTPROTOBUFRPCPROTO']._serialized_start=39
-  _globals['_TESTPROTOBUFRPCPROTO']._serialized_end=305
+  _globals['DESCRIPTOR']._serialized_options = b'\n5org.apache.hadoop.hbase.shaded.ipc.protobuf.generatedB\024TestRpcServiceProtos\210\001\001\240\001\001'
+  _globals['_TESTPROTOBUFRPCPROTO']._serialized_start=54
+  _globals['_TESTPROTOBUFRPCPROTO']._serialized_end=460
 # @@protoc_insertion_point(module_scope)

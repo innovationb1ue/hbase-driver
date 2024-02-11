@@ -16,15 +16,20 @@
  * limitations under the License.
  */
 syntax = "proto2";
-package pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+package hbase.pb;
+
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "HFileProtos";
 option java_generic_services = true;
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
 import "HBase.proto";
+
+message CompactionEventTracker {
+  repeated bytes compacted_store_file = 1;
+}
 
 // Map of name/values
 message FileInfoProto {

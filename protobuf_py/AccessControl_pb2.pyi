@@ -1,4 +1,4 @@
-import Table_pb2 as _Table_pb2
+import HBase_pb2 as _HBase_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
 from google.protobuf import descriptor as _descriptor
@@ -45,11 +45,11 @@ class TablePermission(_message.Message):
     FAMILY_FIELD_NUMBER: _ClassVar[int]
     QUALIFIER_FIELD_NUMBER: _ClassVar[int]
     ACTION_FIELD_NUMBER: _ClassVar[int]
-    table_name: _Table_pb2.TableName
+    table_name: _HBase_pb2.TableName
     family: bytes
     qualifier: bytes
     action: _containers.RepeatedScalarFieldContainer[Permission.Action]
-    def __init__(self, table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., family: _Optional[bytes] = ..., qualifier: _Optional[bytes] = ..., action: _Optional[_Iterable[_Union[Permission.Action, str]]] = ...) -> None: ...
+    def __init__(self, table_name: _Optional[_Union[_HBase_pb2.TableName, _Mapping]] = ..., family: _Optional[bytes] = ..., qualifier: _Optional[bytes] = ..., action: _Optional[_Iterable[_Union[Permission.Action, str]]] = ...) -> None: ...
 
 class NamespacePermission(_message.Message):
     __slots__ = ("namespace_name", "action")
@@ -117,12 +117,12 @@ class GetUserPermissionsRequest(_message.Message):
     COLUMN_QUALIFIER_FIELD_NUMBER: _ClassVar[int]
     USER_NAME_FIELD_NUMBER: _ClassVar[int]
     type: Permission.Type
-    table_name: _Table_pb2.TableName
+    table_name: _HBase_pb2.TableName
     namespace_name: bytes
     column_family: bytes
     column_qualifier: bytes
     user_name: bytes
-    def __init__(self, type: _Optional[_Union[Permission.Type, str]] = ..., table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., namespace_name: _Optional[bytes] = ..., column_family: _Optional[bytes] = ..., column_qualifier: _Optional[bytes] = ..., user_name: _Optional[bytes] = ...) -> None: ...
+    def __init__(self, type: _Optional[_Union[Permission.Type, str]] = ..., table_name: _Optional[_Union[_HBase_pb2.TableName, _Mapping]] = ..., namespace_name: _Optional[bytes] = ..., column_family: _Optional[bytes] = ..., column_qualifier: _Optional[bytes] = ..., user_name: _Optional[bytes] = ...) -> None: ...
 
 class GetUserPermissionsResponse(_message.Message):
     __slots__ = ("user_permission",)
@@ -140,16 +140,16 @@ class CheckPermissionsResponse(_message.Message):
     __slots__ = ()
     def __init__(self) -> None: ...
 
-class HasPermissionRequest(_message.Message):
-    __slots__ = ("table_permission", "user_name")
-    TABLE_PERMISSION_FIELD_NUMBER: _ClassVar[int]
+class HasUserPermissionsRequest(_message.Message):
+    __slots__ = ("user_name", "permission")
     USER_NAME_FIELD_NUMBER: _ClassVar[int]
-    table_permission: TablePermission
+    PERMISSION_FIELD_NUMBER: _ClassVar[int]
     user_name: bytes
-    def __init__(self, table_permission: _Optional[_Union[TablePermission, _Mapping]] = ..., user_name: _Optional[bytes] = ...) -> None: ...
+    permission: _containers.RepeatedCompositeFieldContainer[Permission]
+    def __init__(self, user_name: _Optional[bytes] = ..., permission: _Optional[_Iterable[_Union[Permission, _Mapping]]] = ...) -> None: ...
 
-class HasPermissionResponse(_message.Message):
-    __slots__ = ("has_permission",)
-    HAS_PERMISSION_FIELD_NUMBER: _ClassVar[int]
-    has_permission: bool
-    def __init__(self, has_permission: bool = ...) -> None: ...
+class HasUserPermissionsResponse(_message.Message):
+    __slots__ = ("has_user_permission",)
+    HAS_USER_PERMISSION_FIELD_NUMBER: _ClassVar[int]
+    has_user_permission: _containers.RepeatedScalarFieldContainer[bool]
+    def __init__(self, has_user_permission: _Optional[_Iterable[bool]] = ...) -> None: ...

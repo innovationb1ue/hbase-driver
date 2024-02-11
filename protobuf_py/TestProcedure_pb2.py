@@ -14,14 +14,14 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13TestProcedure.proto\"+\n\x15TestTableDDLStateData\x12\x12\n\ntable_name\x18\x01 \x02(\tBH\n.org.apache.hadoop.hbase.ipc.protobuf.generatedB\x13TestProcedureProtos\x88\x01\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x13TestProcedure.proto\x12\rhbase.test.pb\"+\n\x15TestTableDDLStateData\x12\x12\n\ntable_name\x18\x01 \x02(\tBO\n5org.apache.hadoop.hbase.shaded.ipc.protobuf.generatedB\x13TestProcedureProtos\x88\x01\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'TestProcedure_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['DESCRIPTOR']._options = None
-  _globals['DESCRIPTOR']._serialized_options = b'\n.org.apache.hadoop.hbase.ipc.protobuf.generatedB\023TestProcedureProtos\210\001\001'
-  _globals['_TESTTABLEDDLSTATEDATA']._serialized_start=23
-  _globals['_TESTTABLEDDLSTATEDATA']._serialized_end=66
+  _globals['DESCRIPTOR']._serialized_options = b'\n5org.apache.hadoop.hbase.shaded.ipc.protobuf.generatedB\023TestProcedureProtos\210\001\001'
+  _globals['_TESTTABLEDDLSTATEDATA']._serialized_start=38
+  _globals['_TESTTABLEDDLSTATEDATA']._serialized_end=81
 # @@protoc_insertion_point(module_scope)

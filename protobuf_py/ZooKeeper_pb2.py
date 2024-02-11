@@ -12,43 +12,32 @@ from google.protobuf.internal import builder as _builder
 _sym_db = _symbol_database.Default()
 
 
-import Table_pb2 as Table__pb2
 import HBase_pb2 as HBase__pb2
 import ClusterStatus_pb2 as ClusterStatus__pb2
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fZooKeeper.proto\x12\x02pb\x1a\x0bTable.proto\x1a\x0bHBase.proto\x1a\x13\x43lusterStatus.proto\"m\n\x10MetaRegionServer\x12\x1e\n\x06server\x18\x01 \x02(\x0b\x32\x0e.pb.ServerName\x12\x13\n\x0brpc_version\x18\x02 \x01(\r\x12$\n\x05state\x18\x03 \x01(\x0e\x32\x15.pb.RegionState.State\"P\n\x06Master\x12\x1e\n\x06master\x18\x01 \x02(\x0b\x32\x0e.pb.ServerName\x12\x13\n\x0brpc_version\x18\x02 \x01(\r\x12\x11\n\tinfo_port\x18\x03 \x01(\r\"\x1f\n\tClusterUp\x12\x12\n\nstart_date\x18\x01 \x02(\t\"\x9f\x01\n\x0cSplitLogTask\x12%\n\x05state\x18\x01 \x02(\x0e\x32\x16.pb.SplitLogTask.State\x12#\n\x0bserver_name\x18\x02 \x02(\x0b\x32\x0e.pb.ServerName\"C\n\x05State\x12\x0e\n\nUNASSIGNED\x10\x00\x12\t\n\x05OWNED\x10\x01\x12\x0c\n\x08RESIGNED\x10\x02\x12\x08\n\x04\x44ONE\x10\x03\x12\x07\n\x03\x45RR\x10\x04\"\x8f\x01\n\x14\x44\x65precatedTableState\x12\x36\n\x05state\x18\x01 \x02(\x0e\x32\x1e.pb.DeprecatedTableState.State:\x07\x45NABLED\"?\n\x05State\x12\x0b\n\x07\x45NABLED\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\r\n\tDISABLING\x10\x02\x12\x0c\n\x08\x45NABLING\x10\x03\">\n\x07TableCF\x12!\n\ntable_name\x18\x01 \x01(\x0b\x32\r.pb.TableName\x12\x10\n\x08\x66\x61milies\x18\x02 \x03(\x0c\"\xda\x01\n\x0fReplicationPeer\x12\x12\n\nclusterkey\x18\x01 \x02(\t\x12\x1f\n\x17replicationEndpointImpl\x18\x02 \x01(\t\x12 \n\x04\x64\x61ta\x18\x03 \x03(\x0b\x32\x12.pb.BytesBytesPair\x12)\n\rconfiguration\x18\x04 \x03(\x0b\x32\x12.pb.NameStringPair\x12\x1e\n\ttable_cfs\x18\x05 \x03(\x0b\x32\x0b.pb.TableCF\x12\x12\n\nnamespaces\x18\x06 \x03(\x0c\x12\x11\n\tbandwidth\x18\x07 \x01(\x03\"a\n\x10ReplicationState\x12)\n\x05state\x18\x01 \x02(\x0e\x32\x1a.pb.ReplicationState.State\"\"\n\x05State\x12\x0b\n\x07\x45NABLED\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\"+\n\x17ReplicationHLogPosition\x12\x10\n\x08position\x18\x01 \x02(\x03\"\x1e\n\x0bSwitchState\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x42\x45\n*org.apache.hadoop.hbase.protobuf.generatedB\x0fZooKeeperProtosH\x01\x88\x01\x01\xa0\x01\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\x0fZooKeeper.proto\x12\x08hbase.pb\x1a\x0bHBase.proto\x1a\x13\x43lusterStatus.proto\"y\n\x10MetaRegionServer\x12$\n\x06server\x18\x01 \x02(\x0b\x32\x14.hbase.pb.ServerName\x12\x13\n\x0brpc_version\x18\x02 \x01(\r\x12*\n\x05state\x18\x03 \x01(\x0e\x32\x1b.hbase.pb.RegionState.State\"V\n\x06Master\x12$\n\x06master\x18\x01 \x02(\x0b\x32\x14.hbase.pb.ServerName\x12\x13\n\x0brpc_version\x18\x02 \x01(\r\x12\x11\n\tinfo_port\x18\x03 \x01(\r\"\x1f\n\tClusterUp\x12\x12\n\nstart_date\x18\x01 \x02(\t\"\xab\x01\n\x0cSplitLogTask\x12+\n\x05state\x18\x01 \x02(\x0e\x32\x1c.hbase.pb.SplitLogTask.State\x12)\n\x0bserver_name\x18\x02 \x02(\x0b\x32\x14.hbase.pb.ServerName\"C\n\x05State\x12\x0e\n\nUNASSIGNED\x10\x00\x12\t\n\x05OWNED\x10\x01\x12\x0c\n\x08RESIGNED\x10\x02\x12\x08\n\x04\x44ONE\x10\x03\x12\x07\n\x03\x45RR\x10\x04\"\x95\x01\n\x14\x44\x65precatedTableState\x12<\n\x05state\x18\x01 \x02(\x0e\x32$.hbase.pb.DeprecatedTableState.State:\x07\x45NABLED\"?\n\x05State\x12\x0b\n\x07\x45NABLED\x10\x00\x12\x0c\n\x08\x44ISABLED\x10\x01\x12\r\n\tDISABLING\x10\x02\x12\x0c\n\x08\x45NABLING\x10\x03\"\x1e\n\x0bSwitchState\x12\x0f\n\x07\x65nabled\x18\x01 \x01(\x08\x42L\n1org.apache.hadoop.hbase.shaded.protobuf.generatedB\x0fZooKeeperProtosH\x01\x88\x01\x01\xa0\x01\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'ZooKeeper_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['DESCRIPTOR']._options = None
-  _globals['DESCRIPTOR']._serialized_options = b'\n*org.apache.hadoop.hbase.protobuf.generatedB\017ZooKeeperProtosH\001\210\001\001\240\001\001'
-  _globals['_METAREGIONSERVER']._serialized_start=70
-  _globals['_METAREGIONSERVER']._serialized_end=179
-  _globals['_MASTER']._serialized_start=181
-  _globals['_MASTER']._serialized_end=261
-  _globals['_CLUSTERUP']._serialized_start=263
-  _globals['_CLUSTERUP']._serialized_end=294
-  _globals['_SPLITLOGTASK']._serialized_start=297
-  _globals['_SPLITLOGTASK']._serialized_end=456
-  _globals['_SPLITLOGTASK_STATE']._serialized_start=389
-  _globals['_SPLITLOGTASK_STATE']._serialized_end=456
-  _globals['_DEPRECATEDTABLESTATE']._serialized_start=459
-  _globals['_DEPRECATEDTABLESTATE']._serialized_end=602
-  _globals['_DEPRECATEDTABLESTATE_STATE']._serialized_start=539
-  _globals['_DEPRECATEDTABLESTATE_STATE']._serialized_end=602
-  _globals['_TABLECF']._serialized_start=604
-  _globals['_TABLECF']._serialized_end=666
-  _globals['_REPLICATIONPEER']._serialized_start=669
-  _globals['_REPLICATIONPEER']._serialized_end=887
-  _globals['_REPLICATIONSTATE']._serialized_start=889
-  _globals['_REPLICATIONSTATE']._serialized_end=986
-  _globals['_REPLICATIONSTATE_STATE']._serialized_start=539
-  _globals['_REPLICATIONSTATE_STATE']._serialized_end=573
-  _globals['_REPLICATIONHLOGPOSITION']._serialized_start=988
-  _globals['_REPLICATIONHLOGPOSITION']._serialized_end=1031
-  _globals['_SWITCHSTATE']._serialized_start=1033
-  _globals['_SWITCHSTATE']._serialized_end=1063
+  _globals['DESCRIPTOR']._serialized_options = b'\n1org.apache.hadoop.hbase.shaded.protobuf.generatedB\017ZooKeeperProtosH\001\210\001\001\240\001\001'
+  _globals['_METAREGIONSERVER']._serialized_start=63
+  _globals['_METAREGIONSERVER']._serialized_end=184
+  _globals['_MASTER']._serialized_start=186
+  _globals['_MASTER']._serialized_end=272
+  _globals['_CLUSTERUP']._serialized_start=274
+  _globals['_CLUSTERUP']._serialized_end=305
+  _globals['_SPLITLOGTASK']._serialized_start=308
+  _globals['_SPLITLOGTASK']._serialized_end=479
+  _globals['_SPLITLOGTASK_STATE']._serialized_start=412
+  _globals['_SPLITLOGTASK_STATE']._serialized_end=479
+  _globals['_DEPRECATEDTABLESTATE']._serialized_start=482
+  _globals['_DEPRECATEDTABLESTATE']._serialized_end=631
+  _globals['_DEPRECATEDTABLESTATE_STATE']._serialized_start=568
+  _globals['_DEPRECATEDTABLESTATE_STATE']._serialized_end=631
+  _globals['_SWITCHSTATE']._serialized_start=633
+  _globals['_SWITCHSTATE']._serialized_end=663
 # @@protoc_insertion_point(module_scope)

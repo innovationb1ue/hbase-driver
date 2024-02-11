@@ -16,17 +16,15 @@
  * limitations under the License.
  */
 syntax = "proto2";
-
 // This file contains protocol buffers that are used for Client service.
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "ClientProtos";
 option java_generic_services = true;
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
-import "Table.proto";
 import "HBase.proto";
 import "Filter.proto";
 import "Cell.proto";
@@ -85,7 +83,8 @@ message Get {
 
   // If the row to get doesn't exist, return the
   // closest row before. Deprecated. No longer used!
-  // Since hbase-2.0.0.
+  // Since hbase-2.0.0 but left in place so can test
+  // for Gets with this set and throw Exception.
   optional bool closest_row_before = 11 [default = false];
 
   optional Consistency consistency = 12 [default = STRONG];
@@ -133,8 +132,8 @@ message GetResponse {
 }
 
 /**
- * Condition to check if the value of a given cell (row,
- * family, qualifier) matches a value via a given comparator.
+ * Condition to check if the value of a given cell (row, family, qualifier) matches a value via a
+ * given comparator or the value of a given cell matches a given filter.
  *
  * Condition is used in check and mutate operations.
  */
@@ -380,6 +379,8 @@ message BulkLoadHFileRequest {
   optional DelegationToken fs_token = 4;
   optional string bulk_token = 5;
   optional bool copy_file = 6 [default = false];
+  repeated string cluster_ids = 7;
+  optional bool replicate = 8 [default = true];
 
   message FamilyPath {
     required bytes family = 1;

@@ -6,6 +6,12 @@ from typing import ClassVar as _ClassVar, Iterable as _Iterable, Mapping as _Map
 
 DESCRIPTOR: _descriptor.FileDescriptor
 
+class CompactionEventTracker(_message.Message):
+    __slots__ = ("compacted_store_file",)
+    COMPACTED_STORE_FILE_FIELD_NUMBER: _ClassVar[int]
+    compacted_store_file: _containers.RepeatedScalarFieldContainer[bytes]
+    def __init__(self, compacted_store_file: _Optional[_Iterable[bytes]] = ...) -> None: ...
+
 class FileInfoProto(_message.Message):
     __slots__ = ("map_entry",)
     MAP_ENTRY_FIELD_NUMBER: _ClassVar[int]

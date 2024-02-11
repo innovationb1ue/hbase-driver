@@ -3,7 +3,10 @@
   <component name="NewModuleRootManager">
     <content url="file://$MODULE_DIR$">
       <sourceFolder url="file://$MODULE_DIR$/pb" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/protobuf" isTestSource="false" />
       <sourceFolder url="file://$MODULE_DIR$/protobuf_py" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/protobuf_shaded" isTestSource="false" />
+      <sourceFolder url="file://$MODULE_DIR$/protobuf_shaded_py" isTestSource="false" />
     </content>
     <orderEntry type="jdk" jdkName="Python 3.11" jdkType="Python SDK" />
     <orderEntry type="sourceFolder" forTests="false" />

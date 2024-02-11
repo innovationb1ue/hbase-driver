@@ -1,4 +1,3 @@
-import Table_pb2 as _Table_pb2
 import HBase_pb2 as _HBase_pb2
 from google.protobuf.internal import containers as _containers
 from google.protobuf.internal import enum_type_wrapper as _enum_type_wrapper
@@ -12,8 +11,10 @@ class ScopeType(int, metaclass=_enum_type_wrapper.EnumTypeWrapper):
     __slots__ = ()
     REPLICATION_SCOPE_LOCAL: _ClassVar[ScopeType]
     REPLICATION_SCOPE_GLOBAL: _ClassVar[ScopeType]
+    REPLICATION_SCOPE_SERIAL: _ClassVar[ScopeType]
 REPLICATION_SCOPE_LOCAL: ScopeType
 REPLICATION_SCOPE_GLOBAL: ScopeType
+REPLICATION_SCOPE_SERIAL: ScopeType
 
 class WALHeader(_message.Message):
     __slots__ = ("has_compression", "encryption_key", "has_tag_compression", "writer_cls_name", "cell_codec_cls_name", "has_value_compression", "value_compression_algorithm")
@@ -143,16 +144,20 @@ class StoreDescriptor(_message.Message):
     def __init__(self, family_name: _Optional[bytes] = ..., store_home_dir: _Optional[str] = ..., store_file: _Optional[_Iterable[str]] = ..., store_file_size_bytes: _Optional[int] = ...) -> None: ...
 
 class BulkLoadDescriptor(_message.Message):
-    __slots__ = ("table_name", "encoded_region_name", "stores", "bulkload_seq_num")
+    __slots__ = ("table_name", "encoded_region_name", "stores", "bulkload_seq_num", "cluster_ids", "replicate")
     TABLE_NAME_FIELD_NUMBER: _ClassVar[int]
     ENCODED_REGION_NAME_FIELD_NUMBER: _ClassVar[int]
     STORES_FIELD_NUMBER: _ClassVar[int]
     BULKLOAD_SEQ_NUM_FIELD_NUMBER: _ClassVar[int]
-    table_name: _Table_pb2.TableName
+    CLUSTER_IDS_FIELD_NUMBER: _ClassVar[int]
+    REPLICATE_FIELD_NUMBER: _ClassVar[int]
+    table_name: _HBase_pb2.TableName
     encoded_region_name: bytes
     stores: _containers.RepeatedCompositeFieldContainer[StoreDescriptor]
     bulkload_seq_num: int
-    def __init__(self, table_name: _Optional[_Union[_Table_pb2.TableName, _Mapping]] = ..., encoded_region_name: _Optional[bytes] = ..., stores: _Optional[_Iterable[_Union[StoreDescriptor, _Mapping]]] = ..., bulkload_seq_num: _Optional[int] = ...) -> None: ...
+    cluster_ids: _containers.RepeatedScalarFieldContainer[str]
+    replicate: bool
+    def __init__(self, table_name: _Optional[_Union[_HBase_pb2.TableName, _Mapping]] = ..., encoded_region_name: _Optional[bytes] = ..., stores: _Optional[_Iterable[_Union[StoreDescriptor, _Mapping]]] = ..., bulkload_seq_num: _Optional[int] = ..., cluster_ids: _Optional[_Iterable[str]] = ..., replicate: bool = ...) -> None: ...
 
 class RegionEventDescriptor(_message.Message):
     __slots__ = ("event_type", "table_name", "encoded_region_name", "log_sequence_number", "stores", "server", "region_name")

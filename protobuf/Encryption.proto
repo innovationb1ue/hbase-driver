@@ -18,9 +18,9 @@
 syntax = "proto2";
 
 // This file contains protocol buffers used for encryption
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "EncryptionProtos";
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
@@ -31,4 +31,5 @@ message WrappedKey {
   required bytes data = 3;
   optional bytes iv = 4;
   optional bytes hash = 5;
+  optional string hash_algorithm = 6 [default = "MD5"];
 }

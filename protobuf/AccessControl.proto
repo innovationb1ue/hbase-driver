@@ -16,15 +16,21 @@
  * limitations under the License.
  */
 syntax = "proto2";
-package pb;
+package hbase.pb;
 
-option java_package = "org.apache.hadoop.hbase.protobuf.generated";
+option java_package = "org.apache.hadoop.hbase.shaded.protobuf.generated";
 option java_outer_classname = "AccessControlProtos";
 option java_generic_services = true;
 option java_generate_equals_and_hash = true;
 option optimize_for = SPEED;
 
-import "Table.proto";
+import "HBase.proto";
+
+/**
+* Messages and services in shaded AccessControl.proto only use for serializing/deserializing permissions
+* in .snapshotinfo, and should not use for access control logic for coprocessor endpoints compatibility
+* (use AccessControl.proto under hbase-protocol module instead).
+*/
 
 message Permission {
     enum Action {
@@ -113,13 +119,13 @@ message CheckPermissionsRequest {
 message CheckPermissionsResponse {
 }
 
-message HasPermissionRequest {
-  required TablePermission table_permission = 1;
-  required bytes user_name = 2;
+message HasUserPermissionsRequest {
+  optional bytes user_name = 1;
+  repeated Permission permission = 2;
 }
 
-message HasPermissionResponse {
-  optional bool has_permission = 1;
+message HasUserPermissionsResponse {
+  repeated bool has_user_permission = 1;
 }
 
 service AccessControlService {
@@ -134,7 +140,4 @@ service AccessControlService {
 
     rpc CheckPermissions(CheckPermissionsRequest)
       returns (CheckPermissionsResponse);
-
-    rpc HasPermission(HasPermissionRequest)
-      returns (HasPermissionResponse);
 }

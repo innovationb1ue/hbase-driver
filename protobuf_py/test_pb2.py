@@ -14,24 +14,24 @@ _sym_db = _symbol_database.Default()
 
 
 
-DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ntest.proto\"\x13\n\x11\x45mptyRequestProto\"\x14\n\x12\x45mptyResponseProto\"#\n\x10\x45\x63hoRequestProto\x12\x0f\n\x07message\x18\x01 \x02(\t\"$\n\x11\x45\x63hoResponseProto\x12\x0f\n\x07message\x18\x01 \x02(\t\"\x1f\n\x11PauseRequestProto\x12\n\n\x02ms\x18\x01 \x02(\r\"!\n\x11\x41\x64\x64rResponseProto\x12\x0c\n\x04\x61\x64\x64r\x18\x01 \x02(\tB?\n.org.apache.hadoop.hbase.ipc.protobuf.generatedB\nTestProtos\xa0\x01\x01')
+DESCRIPTOR = _descriptor_pool.Default().AddSerializedFile(b'\n\ntest.proto\x12\rhbase.test.pb\"\x13\n\x11\x45mptyRequestProto\"\x14\n\x12\x45mptyResponseProto\"#\n\x10\x45\x63hoRequestProto\x12\x0f\n\x07message\x18\x01 \x02(\t\"$\n\x11\x45\x63hoResponseProto\x12\x0f\n\x07message\x18\x01 \x02(\t\"\x1f\n\x11PauseRequestProto\x12\n\n\x02ms\x18\x01 \x02(\r\"!\n\x11\x41\x64\x64rResponseProto\x12\x0c\n\x04\x61\x64\x64r\x18\x01 \x02(\tBF\n5org.apache.hadoop.hbase.shaded.ipc.protobuf.generatedB\nTestProtos\xa0\x01\x01')
 
 _globals = globals()
 _builder.BuildMessageAndEnumDescriptors(DESCRIPTOR, _globals)
 _builder.BuildTopDescriptorsAndMessages(DESCRIPTOR, 'test_pb2', _globals)
 if _descriptor._USE_C_DESCRIPTORS == False:
   _globals['DESCRIPTOR']._options = None
-  _globals['DESCRIPTOR']._serialized_options = b'\n.org.apache.hadoop.hbase.ipc.protobuf.generatedB\nTestProtos\240\001\001'
-  _globals['_EMPTYREQUESTPROTO']._serialized_start=14
-  _globals['_EMPTYREQUESTPROTO']._serialized_end=33
-  _globals['_EMPTYRESPONSEPROTO']._serialized_start=35
-  _globals['_EMPTYRESPONSEPROTO']._serialized_end=55
-  _globals['_ECHOREQUESTPROTO']._serialized_start=57
-  _globals['_ECHOREQUESTPROTO']._serialized_end=92
-  _globals['_ECHORESPONSEPROTO']._serialized_start=94
-  _globals['_ECHORESPONSEPROTO']._serialized_end=130
-  _globals['_PAUSEREQUESTPROTO']._serialized_start=132
-  _globals['_PAUSEREQUESTPROTO']._serialized_end=163
-  _globals['_ADDRRESPONSEPROTO']._serialized_start=165
-  _globals['_ADDRRESPONSEPROTO']._serialized_end=198
+  _globals['DESCRIPTOR']._serialized_options = b'\n5org.apache.hadoop.hbase.shaded.ipc.protobuf.generatedB\nTestProtos\240\001\001'
+  _globals['_EMPTYREQUESTPROTO']._serialized_start=29
+  _globals['_EMPTYREQUESTPROTO']._serialized_end=48
+  _globals['_EMPTYRESPONSEPROTO']._serialized_start=50
+  _globals['_EMPTYRESPONSEPROTO']._serialized_end=70
+  _globals['_ECHOREQUESTPROTO']._serialized_start=72
+  _globals['_ECHOREQUESTPROTO']._serialized_end=107
+  _globals['_ECHORESPONSEPROTO']._serialized_start=109
+  _globals['_ECHORESPONSEPROTO']._serialized_end=145
+  _globals['_PAUSEREQUESTPROTO']._serialized_start=147
+  _globals['_PAUSEREQUESTPROTO']._serialized_end=178
+  _globals['_ADDRRESPONSEPROTO']._serialized_start=180
+  _globals['_ADDRRESPONSEPROTO']._serialized_end=213
 # @@protoc_insertion_point(module_scope)
