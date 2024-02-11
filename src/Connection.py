@@ -30,7 +30,8 @@ class Connection:
     def send_request(self, req: message.Message, method_name: str):
         rpc_serialized = req.SerializeToString()
         # todo: save id and check result later
-        call_id = random.randint(1, 999)
+        # call_id = random.randint(1, 999)
+        call_id = 66
         serialized_header = self._get_call_header_bytes(method_name, call_id)
         rpc_length_bytes = to_varint(len(rpc_serialized)).encode('utf-8')
         total_size = 4 + 1 + len(serialized_header) + len(rpc_length_bytes) + len(rpc_serialized)
@@ -84,16 +85,22 @@ class Connection:
         # decoder. It'll then return two variables:
         #       - next_pos: The number of bytes of data specified by the varint
         #       - pos: The starting location of the data to read.
-        next_pos, pos = decoder(full_data, 0)
+
+        header_size, pos = decoder(full_data, 0)
+        print("resp size = ", header_size)
+
         header = ResponseHeader()
-        header.ParseFromString(full_data[pos: pos + next_pos])
-        pos += next_pos
+        header.ParseFromString(full_data[pos: pos + header_size])
+        pos += header_size
+        
         if header.call_id != call_id:
             # call_ids don't match? Looks like a different thread nabbed our
             # response.
             raise Exception("call id is wrong. ")
 
-        rpc = response_types[rq_type]()
-        rpc.ParseFromString(full_data[pos: pos + next_pos])
+        rpc_size, pos = decoder(full_data, pos)
+
+        rpc: message.Message = response_types[rq_type]()
+        rpc.ParseFromString(full_data[pos: pos + rpc_size])
         # The rpc is fully built!
         return rpc
