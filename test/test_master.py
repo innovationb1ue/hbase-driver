@@ -13,4 +13,17 @@ def test_connect_master():
 def test_create_table():
     client = MasterConnection()
     client.connect(host, port)
-    client.create_table("", "test_table", ["cf1", 'cf2'])
+    client.create_table("", "test_table", ["cf1", 'cf2'], split_keys=[b"111111", b"222222", b"333333"])
+
+
+def test_delete_table():
+    client = MasterConnection()
+    client.connect(host, port)
+    client.disable_table("", "test_table")
+    client.delete_table("", "test_table")
+
+
+def test_enable_table():
+    client = MasterConnection()
+    client.connect(host, port)
+    client.enable_table("", "test_table")

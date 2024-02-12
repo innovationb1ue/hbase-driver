@@ -13,11 +13,11 @@ from util.varint import to_varint, decoder
 
 class Connection:
     def __init__(self, service_name):
+        self.conn: socket.socket | None = None
         assert service_name in ["ClientService", "MasterService"]
         self.service_name = service_name
 
-    @abstractmethod
-    def connect(self, host, port=16000, timeout=3, user="pythonHbaseDriver"):
+    def connect(self, host, port=16000, timeout=60, user="pythonHbaseDriver"):
         self.conn = socket.create_connection((host, port), timeout=timeout)
         ch = ConnectionHeader()
         ch.user_info.effective_user = user
@@ -27,7 +27,7 @@ class Connection:
         msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
         self.conn.send(msg)
 
-    def send_request(self, req: message.Message, method_name: str):
+    def send_request(self, req: message.Message, method_name: str, need_response=True):
         rpc_serialized = req.SerializeToString()
         # todo: save id and check result later
         # call_id = random.randint(1, 999)
@@ -42,8 +42,10 @@ class Connection:
         to_send += serialized_header + rpc_length_bytes + rpc_serialized
 
         self.conn.send(to_send)
-
-        return self.receive_rpc(call_id, req, method_name)
+        if need_response:
+            return self.receive_rpc(call_id, req, method_name)
+        else:
+            return
 
     def _get_call_header_bytes(self, method_name, call_id: int):
         header = RequestHeader()
@@ -91,15 +93,21 @@ class Connection:
 
         header = ResponseHeader()
         header.ParseFromString(full_data[pos: pos + header_size])
+
+        if header.exception.exception_class_name != '':
+            raise Exception(header.exception.exception_class_name, header.exception.stack_trace)
+
         pos += header_size
-        
         if header.call_id != call_id:
             # call_ids don't match? Looks like a different thread nabbed our
             # response.
             raise Exception("call id is wrong. ")
 
         rpc_size, pos = decoder(full_data, pos)
-
+        # if we didn't put the related response type, it means that we do not need a response.
+        if response_types.get(rq_type) is None:
+            return
+        
         rpc: message.Message = response_types[rq_type]()
         rpc.ParseFromString(full_data[pos: pos + rpc_size])
         # The rpc is fully built!
