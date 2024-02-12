@@ -42,12 +42,14 @@ class MasterConnection(Connection):
         rq.table_name.namespace = ns.encode("utf-8")
         rq.table_name.qualifier = tb.encode("utf-8")
         self.send_request(rq, "EnableTable")
+        # todo: check table enabled.
 
     def disable_table(self, namespace, table):
         rq = DisableTableRequest()
         rq.table_name.namespace = namespace.encode("utf-8")
         rq.table_name.qualifier = table.encode("utf-8")
         self.send_request(rq, "DisableTable")
+        # todo: check table disabled.
 
     def delete_table(self, namespace, table):
         rq = DeleteTableRequest()

@@ -19,14 +19,15 @@ znode = "/hbase"
 # quorum. It then asks ZK for the location of the MetaRegionServer,
 # returning a tuple containing (host_name, port).
 # i.e. this gets the master server.
-def locate_meta(zkquorum, establish_connection_timeout=5, missing_znode_retries=5, zk=None):
+def locate_meta(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5, zk=None):
     if zk is None:
         # Using Kazoo for interfacing with ZK
-        zk = KazooClient(hosts=zkquorum, timeout=3)
+        # todo: try all contact points.
+        zk = KazooClient(hosts=zkquorum[0], timeout=3)
     try:
         zk.start(timeout=establish_connection_timeout)
     except KazooTimeoutError:
-        raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum))
+        raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
     # MetaRegionServer information is located at /hbase/meta-region-server
     try:
         rsp, znodestat = zk.get(znode + "/meta-region-server")
