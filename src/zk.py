@@ -20,10 +20,13 @@ znode = "/hbase"
 # returning a tuple containing (host_name, port).
 # i.e. this gets the master server.
 def locate_meta(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5, zk=None):
+    if type(zkquorum) != list:
+        raise ValueError("must provide a list for zookeeper quorum.")
     if zk is None:
         # Using Kazoo for interfacing with ZK
         # todo: try all contact points.
-        zk = KazooClient(hosts=zkquorum[0], timeout=3)
+        for host in zkquorum:
+            zk = KazooClient(hosts=host, timeout=3)
     try:
         zk.start(timeout=establish_connection_timeout)
     except KazooTimeoutError:
