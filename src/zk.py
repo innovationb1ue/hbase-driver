@@ -1,13 +1,11 @@
-from kazoo.client import KazooClient
-from kazoo.handlers.threading import KazooTimeoutError
-from kazoo.exceptions import NoNodeError
-
-import protobuf_py.Admin_pb2
-from protobuf_py import ZooKeeper_pb2
-import protobuf_py.ZooKeeper_pb2
-from struct import unpack
-from time import sleep
 import logging
+from struct import unpack
+
+from kazoo.client import KazooClient
+from kazoo.exceptions import NoNodeError
+from kazoo.handlers.threading import KazooTimeoutError
+
+from protobuf_py import ZooKeeper_pb2
 
 logger = logging.getLogger('pybase.' + __name__)
 logger.setLevel(logging.DEBUG)

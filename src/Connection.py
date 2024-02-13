@@ -1,13 +1,9 @@
-import random
 import socket
-from abc import abstractmethod
-from io import StringIO
 from struct import pack, unpack
 
 from google.protobuf import message
 
 from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
-from src import zk
 from src.response import response_types
 from util.varint import to_varint, decoder
 
@@ -28,7 +24,7 @@ class Connection:
         # 6 bytes : 'HBas' + RPC_VERSION(0) + AUTH_CODE(80) +
         msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
         self.conn.send(msg)
-        
+
     def send_request(self, req: message.Message, method_name: str, need_response=True):
         rpc_serialized = req.SerializeToString()
         # todo: save id and check result later
@@ -91,7 +87,6 @@ class Connection:
         #       - pos: The starting location of the data to read.
 
         header_size, pos = decoder(full_data, 0)
-        print("resp size = ", header_size)
 
         header = ResponseHeader()
         header.ParseFromString(full_data[pos: pos + header_size])

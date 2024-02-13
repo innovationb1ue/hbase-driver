@@ -1,6 +1,7 @@
 from struct import unpack
 
 from Client_pb2 import ScanResponse
+from src.region_name import RegionName
 from src.regionserver import RsConnection
 from src.zk import locate_meta
 
@@ -13,7 +14,32 @@ def test_locate_region():
     rs = RsConnection()
     rs.connect(host, port)
 
-    resp: ScanResponse = rs.locate_region("", "test_table", "000")
-    if resp.scanner_id != 0:
-        print("receive scanner id ", resp.scanner_id)
-    assert len(resp.results) != 0
+    resp: RegionName = rs.locate_region("", "test_table", "000")
+    assert resp.host
+    assert resp.port
+
+
+def test_put():
+    host, port = locate_meta(["127.0.0.1"])
+    rs = RsConnection()
+    rs.connect(host, port)
+
+    resp = rs.put("", "test_table", "row1", {"cf1": {"qf1": "123123"}})
+
+    print(resp)
+
+
+def test_get():
+    host, port = locate_meta(["127.0.0.1"])
+    rs = RsConnection()
+    rs.connect(host, port)
+
+    resp = rs.put("", "test_table", "row666", {"cf1": {"qf1": "123123"}})
+    print(resp)
+
+    resp = rs.get("", "test_table", "row666", {"cf1": ["qf1"]})
+    print(resp)
+    assert resp[0].value == b'123123'
+    assert resp[0].row == b'row666'
+    assert resp[0].family == b'cf1'
+    assert resp[0].qualifier == b'qf1'
