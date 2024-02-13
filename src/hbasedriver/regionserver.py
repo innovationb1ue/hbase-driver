@@ -1,5 +1,6 @@
 from Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, MutationProto, MutateResponse
 from src.hbasedriver.Connection import Connection
+from src.hbasedriver.model.Row import Row
 from src.hbasedriver.region_name import RegionName
 from src.hbasedriver.util import to_bytes
 
@@ -34,11 +35,11 @@ class RsConnection(Connection):
 
     def put(self, ns, table, rowkey, cf_to_qf_vals: dict):
         """
-        :param ns:
-        :param table:
-        :param rowkey:
+        :param ns: namespace
+        :param table: table name
+        :param rowkey: row key in bytes.
         :param cf_to_qf_vals: in the format of dict{"cf": {"qf1": "val1", "qf2": "val2"}, ...}
-        :return:
+        :return: is the request get processed? (return by server. )
         """
         # 1. locate region (scan meta)
         # 2. send put request to that region and receive response?
@@ -87,4 +88,5 @@ class RsConnection(Connection):
             rq.get.column.append(col)
 
         resp = self.send_request(rq, "Get")
-        return resp.result.cell
+        result = Row.from_result(resp.result)
+        return result

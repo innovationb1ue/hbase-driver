@@ -34,9 +34,6 @@ def test_get():
     resp = rs.put("", "test_table", "row666", {"cf1": {"qf1": "123123"}})
     print(resp)
 
-    resp = rs.get("", "test_table", "row666", {"cf1": ["qf1"]})
-    print(resp)
-    assert resp[0].value == b'123123'
-    assert resp[0].row == b'row666'
-    assert resp[0].family == b'cf1'
-    assert resp[0].qualifier == b'qf1'
+    row = rs.get("", "test_table", "row666", {"cf1": ["qf1"]})
+    assert row.get('cf1', 'qf1') == b'123123'
+    assert row.rowkey == b'row666'
