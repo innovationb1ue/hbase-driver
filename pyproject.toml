@@ -3,6 +3,8 @@ requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = 'hbase-driver'
+version = "0.0.2"
 readme = "README.md"
 
 [project.urls]
