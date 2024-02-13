@@ -1,5 +1,4 @@
-from src.master import MasterConnection
-from src.regionserver import RsConnection
+from src.hbasedriver.master import MasterConnection
 
 host = "127.0.0.1"
 port = 16000

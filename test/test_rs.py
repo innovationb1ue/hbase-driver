@@ -1,9 +1,6 @@
-from struct import unpack
-
-from Client_pb2 import ScanResponse
-from src.region_name import RegionName
-from src.regionserver import RsConnection
-from src.zk import locate_meta
+from src.hbasedriver.region_name import RegionName
+from src.hbasedriver.regionserver import RsConnection
+from src.hbasedriver.zk import locate_meta
 
 host = "127.0.0.1"
 port = 16020

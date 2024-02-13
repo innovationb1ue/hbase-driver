@@ -4,7 +4,7 @@ from struct import pack, unpack
 from google.protobuf import message
 
 from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
-from src.response import response_types
+from src.hbasedriver.response import response_types
 from util.varint import to_varint, decoder
 
 

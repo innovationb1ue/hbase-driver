@@ -1,12 +1,7 @@
-import socket
-from struct import pack
-
 from Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, MutationProto, MutateResponse
-from RPC_pb2 import ConnectionHeader
-from src import zk
-from src.Connection import Connection
-from src.region_name import RegionName
-from src.util import to_bytes
+from src.hbasedriver.Connection import Connection
+from src.hbasedriver.region_name import RegionName
+from src.hbasedriver.util import to_bytes
 
 
 class RsConnection(Connection):

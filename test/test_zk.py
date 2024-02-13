@@ -1,4 +1,4 @@
-from src.zk import locate_meta
+from src.hbasedriver.zk import locate_meta
 
 
 def test_locate_meta():

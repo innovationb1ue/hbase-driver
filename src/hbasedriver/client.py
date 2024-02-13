@@ -1,4 +1,4 @@
-from src import zk
+from src.hbasedriver import zk
 
 
 class Client:

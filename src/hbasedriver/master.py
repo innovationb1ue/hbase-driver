@@ -1,19 +1,6 @@
-import random
-import socket
-from io import StringIO
-from struct import pack, unpack
-
-from google.protobuf.pyext import _message
-
-from Client_pb2 import GetRequest, Column
 from HBase_pb2 import ColumnFamilySchema
-from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
 from protobuf_py.Master_pb2 import CreateTableRequest, DeleteTableRequest, DisableTableRequest
-from src.Connection import Connection
-from src.response import response_types
-from util.varint import to_varint, decoder
-
-from google.protobuf import message
+from src.hbasedriver.Connection import Connection
 
 
 class MasterConnection(Connection):
