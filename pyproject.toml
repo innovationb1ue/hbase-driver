@@ -1,3 +1,10 @@
 [build-system]
 requires = ["setuptools"]
 build-backend = "setuptools.build_meta"
+
+[project]
+readme = "README.md"
+
+[project.urls]
+Homepage = "https://github.com/innovationb1ue/hbase-driver"
+Issues = "https://github.com/innovationb1ue/hbase-driver/issues"

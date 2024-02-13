@@ -11,7 +11,6 @@ Native Hbase driver in Python. (No thrift)
 ### Implemented
 
 - Create, Disable, Delete table
--
 
 ### TODOs
 
