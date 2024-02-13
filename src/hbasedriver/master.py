@@ -10,6 +10,14 @@ class MasterConnection(Connection):
         super().__init__("MasterService")
 
     def create_table(self, namespace, table, columns, split_keys=None):
+        """
+        Create a hbase table, raise RemoteException if failed or table exists.
+        :param namespace:
+        :param table:
+        :param columns:
+        :param split_keys:
+        :return: None
+        """
         if split_keys is None:
             split_keys = []
         rq = CreateTableRequest()

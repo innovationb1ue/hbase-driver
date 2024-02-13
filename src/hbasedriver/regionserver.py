@@ -1,6 +1,6 @@
 from Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, MutationProto, MutateResponse
 from src.hbasedriver.Connection import Connection
-from src.hbasedriver.model.Row import Row
+from src.hbasedriver.model.row import Row
 from src.hbasedriver.region_name import RegionName
 from src.hbasedriver.util import to_bytes
 
@@ -9,8 +9,8 @@ class RsConnection(Connection):
     def __init__(self):
         super().__init__("ClientService")
 
-    # locate the region with given rowkey and table name. (must be called on rs with meta region. )
-    def locate_region(self, ns, tb, rowkey):
+    # locate the region with given rowkey and table name. (must be called on rs with meta region)
+    def locate_region(self, ns, tb, rowkey) -> RegionName:
         rq = ScanRequest()
         if ns is None or len(ns) == 0:
             rq.scan.start_row = "{},{},".format(tb, rowkey).encode('utf-8')
@@ -33,21 +33,19 @@ class RsConnection(Connection):
 
         return RegionName.from_cells(resp2.results[0].cell)
 
-    def put(self, ns, table, rowkey, cf_to_qf_vals: dict):
+    def put(self, region_name_encoded, rowkey, cf_to_qf_vals: dict):
         """
-        :param ns: namespace
-        :param table: table name
+        Perform a PUT request on this regionserver.
+        :param region_name_encoded: encoded region name get by scanning meta.
         :param rowkey: row key in bytes.
         :param cf_to_qf_vals: in the format of dict{"cf": {"qf1": "val1", "qf2": "val2"}, ...}
         :return: is the request get processed? (return by server. )
         """
-        # 1. locate region (scan meta)
-        # 2. send put request to that region and receive response?
-        region_name = self.locate_region(ns, table, rowkey)
+        # send put request to the target region and receive response(processed?)
         rq = MutateRequest()
         # set target region
         rq.region.type = 1
-        rq.region.value = region_name.region_encoded
+        rq.region.value = region_name_encoded
         # set kv pairs
         rq.mutation.mutate_type = MutationProto.MutationType.PUT
         rq.mutation.row = bytes(rowkey, "utf-8")

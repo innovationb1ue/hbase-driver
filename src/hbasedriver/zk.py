@@ -5,6 +5,7 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from kazoo.handlers.threading import KazooTimeoutError
 
+from ZooKeeper_pb2 import Master
 from protobuf_py import ZooKeeper_pb2
 
 logger = logging.getLogger('pybase.' + __name__)
@@ -13,23 +14,24 @@ logger.setLevel(logging.DEBUG)
 znode = "/hbase"
 
 
-# LocateMeta takes a string representing the location of the ZooKeeper
-# quorum. It then asks ZK for the location of the MetaRegionServer,
-# returning a tuple containing (host_name, port).
-# i.e. this gets the master server.
-def locate_meta(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5, zk=None):
+# locate_master takes a string representing the location of the ZooKeeper
+# quorum. It then asks ZK for the location of the MetaRegionServer.
+# i.e. this gets the region server that holds the hbase:meta table.
+def locate_meta_region(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5) -> (bytes, bytes):
     if type(zkquorum) != list:
         raise ValueError("must provide a list for zookeeper quorum.")
-    if zk is None:
-        # Using Kazoo for interfacing with ZK
-        # todo: try all contact points.
+    zk = None
+    try:
         for host in zkquorum:
             zk = KazooClient(hosts=host, timeout=3)
-    try:
-        zk.start(timeout=establish_connection_timeout)
+            zk.start(timeout=establish_connection_timeout)
     except KazooTimeoutError:
         raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
-    # MetaRegionServer information is located at /hbase/meta-region-server
+
+    if not zk:
+        raise Exception("can not connect to zk via any contact point {}".format(zkquorum))
+
+    # locate meta region
     try:
         rsp, znodestat = zk.get(znode + "/meta-region-server")
     except NoNodeError:
@@ -59,5 +61,39 @@ def locate_meta(zkquorum: list, establish_connection_timeout=5, missing_znode_re
     hostname = meta.server.host_name
     port = meta.server.port
 
-    logger.info('Discovered Master at %s:%s', hostname, port)
+    logger.info('Discovered meta region at %s:%s', hostname, port)
     return hostname, port
+
+
+def locate_master(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5):
+    if type(zkquorum) != list:
+        raise ValueError("must provide a list for zookeeper quorum.")
+    zk = None
+    try:
+        for host in zkquorum:
+            zk = KazooClient(hosts=host, timeout=3)
+            zk.start(timeout=establish_connection_timeout)
+    except KazooTimeoutError:
+        raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
+
+    if not zk:
+        raise Exception("can not connect to zk via any contact point {}".format(zkquorum))
+
+    # locate master
+    try:
+        rsp, stat = zk.get("/hbase/master")
+        first_byte, id_length = unpack(">cI", rsp[:5])
+        if first_byte != b'\xff':
+            # Malformed response
+            raise Exception(
+                "ZooKeeper returned an invalid response")
+        # skip bytes already read , id and an 8-byte long type salt.
+        rsp = rsp[5 + id_length:]
+        # skip PBUF
+        rsp = rsp[4:]
+        master = Master.FromString(rsp)
+        master_host = master.master.host_name
+        master_port = master.master.port
+        return master_host, master_port
+    except Exception:
+        raise

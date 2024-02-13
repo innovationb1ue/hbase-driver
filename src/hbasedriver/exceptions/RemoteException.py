@@ -1,0 +1,4 @@
+class RemoteException(Exception):
+    def __init__(self, msg=None, stack_trace=None):
+        self.msg = msg
+        self.stack_trace = stack_trace

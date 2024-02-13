@@ -4,6 +4,7 @@ from struct import pack, unpack
 from google.protobuf import message
 
 from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
+from src.hbasedriver.exceptions.RemoteException import RemoteException
 from src.hbasedriver.response import response_types
 from util.varint import to_varint, decoder
 
@@ -16,6 +17,10 @@ class Connection:
         self.meta_region = None
 
     def connect(self, host, port=16000, timeout=60, user="pythonHbaseDriver"):
+        if type(host) != str:
+            host = host.decode("utf-8")
+        if type(port) != int:
+            port = int(port)
         self.conn = socket.create_connection((host, port), timeout=timeout)
         ch = ConnectionHeader()
         ch.user_info.effective_user = user
@@ -24,6 +29,7 @@ class Connection:
         # 6 bytes : 'HBas' + RPC_VERSION(0) + AUTH_CODE(80) +
         msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
         self.conn.send(msg)
+        return self
 
     def send_request(self, req: message.Message, method_name: str, need_response=True):
         rpc_serialized = req.SerializeToString()
@@ -92,7 +98,7 @@ class Connection:
         header.ParseFromString(full_data[pos: pos + header_size])
 
         if header.exception.exception_class_name != '':
-            raise Exception(header.exception.exception_class_name, header.exception.stack_trace)
+            raise RemoteException(header.exception.exception_class_name, header.exception.stack_trace)
 
         pos += header_size
         if header.call_id != call_id:
