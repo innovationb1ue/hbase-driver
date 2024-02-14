@@ -10,8 +10,6 @@ Native Hbase driver in Python. (No thrift)
 
 ### Get Started
 
-1.
-
 ```python
 from hbasedriver.client import Client
 from hbasedriver.exceptions.RemoteException import TableExistsException
@@ -32,7 +30,11 @@ print(result)
 ### Implemented
 
 - Create, Disable, Delete table
+- Put
+- Get
+- DELETE
 
 ### TODOs
 
-- PUT
+- Scan
+- Filters

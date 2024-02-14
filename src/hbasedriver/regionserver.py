@@ -56,12 +56,7 @@ class RsConnection(Connection):
                     MutationProto.ColumnValue.QualifierValue(qualifier=bytes(qf, "utf-8"), value=bytes(val, 'utf-8')))
             rq.mutation.column_value.append(col)
         resp: MutateResponse = self.send_request(rq, "Mutate")
-        if not resp.processed:
-            print("Put is not processed. ")
-            return False
-        else:
-            print("Put success")
-            return True
+        return resp.processed
 
     def get(self, ns, table, rowkey, cf_to_qfs: dict):
         # 1. locate region (scan meta)
@@ -88,3 +83,41 @@ class RsConnection(Connection):
         resp = self.send_request(rq, "Get")
         result = Row.from_result(resp.result)
         return result
+
+    def delete(self, ns, tb, rowkey, cf_to_qfs: dict):
+        """
+        If provided with cf to no qualifiers, we delete the whole cf.
+        If provided with cf to some qualifiers, we delete those qualifiers only.
+        :param ns:
+        :param tb:
+        :param rowkey:
+        :param cf_to_qfs:
+        :return:
+        """
+        region_name = self.locate_region(ns, tb, rowkey)
+        rq = MutateRequest()
+        rq.mutation.mutate_type = MutationProto.MutationType.DELETE
+        rq.region.type = 1
+        rq.region.value = region_name.region_encoded
+
+        rq.mutation.row = bytes(rowkey, 'utf-8')
+
+        # cfs
+        for cf, qfs in cf_to_qfs.items():
+            col = MutationProto.ColumnValue(family=bytes(cf, 'utf-8'))
+            # deleting the whole family by adding a pseudo QualifierValue with no qualifier specified.
+            if len(qfs) == 0:
+                col.qualifier_value.append(
+                    MutationProto.ColumnValue.QualifierValue(delete_type=MutationProto.DELETE_MULTIPLE_VERSIONS))
+            else:
+                # add any qualifier if provided.
+                for qf in qfs:
+                    # todo: support more delete types.
+                    # currently we delete all columns smaller than the provided timestamp.
+                    col.qualifier_value.append(
+                        MutationProto.ColumnValue.QualifierValue(qualifier=bytes(qf, "utf-8"),
+                                                                 delete_type=MutationProto.DELETE_MULTIPLE_VERSIONS))
+            rq.mutation.column_value.append(col)
+
+        resp: MutateResponse = self.send_request(rq, "Mutate")
+        return resp.processed
