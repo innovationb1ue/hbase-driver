@@ -5,6 +5,7 @@ from google.protobuf import message
 
 from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
 from src.hbasedriver.exceptions.RemoteException import RemoteException
+from src.hbasedriver.exceptions.RemoteException import TableExistsException
 from src.hbasedriver.response import response_types
 from util.varint import to_varint, decoder
 
@@ -98,6 +99,9 @@ class Connection:
         header.ParseFromString(full_data[pos: pos + header_size])
 
         if header.exception.exception_class_name != '':
+            if header.exception.exception_class_name == "org.apache.hadoop.hbase.TableExistsException":
+                raise TableExistsException(header.exception.exception_class_name, header.exception.stack_trace)
+
             raise RemoteException(header.exception.exception_class_name, header.exception.stack_trace)
 
         pos += header_size
