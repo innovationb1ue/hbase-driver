@@ -1,3 +1,6 @@
+from hbasedriver.operations.delete import Delete
+from hbasedriver.operations.get import Get
+from hbasedriver.operations.put import Put
 from hbasedriver.protobuf_py.Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, \
     MutationProto, MutateResponse
 from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo
@@ -12,14 +15,7 @@ class RsConnection(Connection):
     def __init__(self):
         super().__init__("ClientService")
 
-    def put(self, region_name_encoded, rowkey: bytes, cf_to_qf_vals: dict):
-        """
-        Perform a PUT request on this regionserver.
-        :param region_name_encoded: encoded region name get by scanning meta.
-        :param rowkey: row key in bytes.
-        :param cf_to_qf_vals: in the format of dict{"cf": {"qf1": "val1", "qf2": "val2"}, ...}
-        :return: is the request get processed? (return by server. )
-        """
+    def put(self, region_name_encoded: bytes, put: Put):
         # send put request to the target region and receive response(processed?)
         rq = MutateRequest()
         # set target region
@@ -27,47 +23,41 @@ class RsConnection(Connection):
         rq.region.value = region_name_encoded
         # set kv pairs
         rq.mutation.mutate_type = MutationProto.MutationType.PUT
-        rq.mutation.row = rowkey
-        for cf, qf_value_pairs in cf_to_qf_vals.items():
-            col = MutationProto.ColumnValue(family=bytes(cf, 'utf-8'))
-            for qf, val in qf_value_pairs.items():
+        rq.mutation.row = put.rowkey
+        for family, cells in put.family_cells.items():
+            col = MutationProto.ColumnValue(family=family)
+            for cell in cells:
                 col.qualifier_value.append(
-                    MutationProto.ColumnValue.QualifierValue(qualifier=bytes(qf, "utf-8"), value=bytes(val, 'utf-8')))
+                    MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier, value=cell.value))
             rq.mutation.column_value.append(col)
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
 
-    def get(self, region: Region, rowkey: bytes, cf_to_qfs: dict):
+    def get(self, region_name_encoded, get: Get):
         # send GET request to that region and receive response
         rq = GetRequest()
         # set target region
         rq.region.type = 1
-        rq.region.value = region.region_encoded
+        rq.region.value = region_name_encoded
         # rowkey
-        rq.get.row = rowkey
+        rq.get.row = get.rowkey
         # cfs
-        for cf, qfs in cf_to_qfs.items():
+        for cf, qfs in get.family_columns.items():
             # get all qualifiers
             if len(qfs) == 0:
-                rq.get.column.append(Column(family=bytes(cf, 'utf-8')))
+                rq.get.column.append(Column(family=cf))
                 continue
-            # get target qualifiers only
-            if type(qfs[0]) != bytes:
-                qfs = to_bytes(qfs)
-            col = Column(family=bytes(cf, 'utf-8'), qualifier=qfs)
+            col = Column(family=cf, qualifier=qfs)
             rq.get.column.append(col)
 
         resp = self.send_request(rq, "Get")
         result = Row.from_result(resp.result)
         return result
 
-    def delete(self, region: Region, rowkey: bytes, cf_to_qfs: dict):
+    def delete(self, region, delete: Delete):
         """
-        If provided with cf to no qualifiers, we delete the whole cf.
-        If provided with cf to some qualifiers, we delete those qualifiers only.
+        :param delete:
         :param region:
-        :param rowkey:
-        :param cf_to_qfs:
         :return:
         """
         rq = MutateRequest()
@@ -75,22 +65,23 @@ class RsConnection(Connection):
         rq.region.type = 1
         rq.region.value = region.region_encoded
 
-        rq.mutation.row = rowkey
+        rq.mutation.row = delete.rowkey
 
         # cfs
-        for cf, qfs in cf_to_qfs.items():
-            col = MutationProto.ColumnValue(family=bytes(cf, 'utf-8'))
+        for cf, cells in delete.family_cells.items():
+            col = MutationProto.ColumnValue(family=cf)
             # deleting the whole family by adding a pseudo QualifierValue with no qualifier specified.
-            if len(qfs) == 0:
+            if len(cells) == 0:
                 col.qualifier_value.append(
-                    MutationProto.ColumnValue.QualifierValue(delete_type=MutationProto.DELETE_MULTIPLE_VERSIONS))
+                    MutationProto.ColumnValue.QualifierValue(qualifier=None,
+                                                             delete_type=MutationProto.DELETE_FAMILY))
             else:
                 # add any qualifier if provided.
-                for qf in qfs:
+                for cell in cells:
                     # todo: support more delete types.
                     # currently we delete all columns smaller than the provided timestamp.
                     col.qualifier_value.append(
-                        MutationProto.ColumnValue.QualifierValue(qualifier=bytes(qf, "utf-8"),
+                        MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier,
                                                                  delete_type=MutationProto.DELETE_MULTIPLE_VERSIONS))
             rq.mutation.column_value.append(col)
 

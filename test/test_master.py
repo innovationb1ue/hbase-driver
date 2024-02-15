@@ -1,3 +1,4 @@
+from hbasedriver.exceptions.RemoteException import TableExistsException
 from src.hbasedriver.master import MasterConnection
 
 host = "127.0.0.1"
@@ -12,7 +13,10 @@ def test_connect_master():
 def test_create_table():
     client = MasterConnection()
     client.connect(host, port)
-    client.create_table("", "test_table", ["cf1", 'cf2'], split_keys=[b"111111", b"222222", b"333333"])
+    try:
+        client.create_table("", "test_table", ["cf1", 'cf2'], split_keys=[b"111111", b"222222", b"333333"])
+    except TableExistsException:
+        pass
 
 
 def test_delete_table():

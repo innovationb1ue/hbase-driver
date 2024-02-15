@@ -1,3 +1,4 @@
+# since protoc generated py files use import directly. we have to add this path to PYTHONPATH.
 import os
 import sys
 

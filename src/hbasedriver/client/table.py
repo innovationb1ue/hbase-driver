@@ -1,8 +1,11 @@
 from hbasedriver.meta_server import MetaRsConnection
 from hbasedriver.model.row import Row
+from hbasedriver.operations.delete import Delete
+from hbasedriver.operations.get import Get
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
 from hbasedriver.zk import locate_meta_region
+from hbasedriver.operations.put import Put
 
 
 class Table:
@@ -19,26 +22,26 @@ class Table:
         # we might maintain connections to different regionserver.
         self.rs_conns: dict[(bytes, int), RsConnection] = {}
 
-    def put(self, rowkey: bytes, cf_to_qf_vals: dict):
-        if type(rowkey) != bytes:
-            raise ValueError("must provide bytes for rowkey ")
-        region: Region = self.locate_target_region(rowkey)
+    def put(self, put: Put):
+        region: Region = self.locate_target_region(put.rowkey)
         conn = self.get_rs_connection(region)
-        return conn.put(region.region_encoded, rowkey, cf_to_qf_vals)
+        return conn.put(region.region_encoded, put)
 
-    def get(self, rowkey: bytes, cf_to_qfs: dict) -> Row:
-        if type(rowkey) != bytes:
-            raise ValueError("must provide bytes for rowkey ")
-        region: Region = self.locate_target_region(rowkey)
+    def get(self, get: Get):
+        region: Region = self.locate_target_region(get.rowkey)
         conn = self.get_rs_connection(region)
-        return conn.get(region, rowkey, cf_to_qfs)
+        return conn.get(region.region_encoded, get)
 
-    def delete(self, rowkey: bytes, cf_to_qfs):
-        if type(rowkey) != bytes:
-            raise ValueError("must provide bytes for rowkey ")
-        region: Region = self.locate_target_region(rowkey)
+    def delete(self, delete: Delete):
+        """
+
+        :param rowkey:
+        :param cf_to_qfs:
+        :return:
+        """
+        region: Region = self.locate_target_region(delete.rowkey)
         conn = self.get_rs_connection(region)
-        return conn.delete(region, rowkey, cf_to_qfs)
+        return conn.delete(region, delete)
 
     def get_rs_connection(self, region: Region):
         conn = self.rs_conns.get((region.host, region.port))

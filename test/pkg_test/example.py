@@ -1,5 +1,7 @@
 from hbasedriver.client import Client
 from hbasedriver.exceptions.RemoteException import TableExistsException
+from hbasedriver.operations.get import Get
+from hbasedriver.operations.put import Put
 
 
 def test_example():
@@ -10,8 +12,10 @@ def test_example():
     except TableExistsException:
         pass
     table = client.get_table("", "mytable")
-    table.put(b"row1", {'cf1': {'qf': '666'}})
-    result = table.get(b"row1", {'cf1': ['qf']})
+    put = Put(b"row1").add_column(b'cf1', b'qf', b'666')
+    table.put(put)
+    get = Get(b"row1").add_column(b'cf1', b'qf')
+    result = table.get(get)
     print(result)
 
 

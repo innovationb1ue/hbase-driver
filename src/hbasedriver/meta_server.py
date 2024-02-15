@@ -1,4 +1,4 @@
-from Client_pb2 import ScanRequest, Column, ScanResponse
+from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.Connection import Connection
 from hbasedriver.region import Region
 
