@@ -1,6 +1,6 @@
-from HBase_pb2 import ColumnFamilySchema
-from protobuf_py.Master_pb2 import CreateTableRequest, DeleteTableRequest, DisableTableRequest
-from src.hbasedriver.Connection import Connection
+from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema
+from hbasedriver.protobuf_py.Master_pb2 import CreateTableRequest, DeleteTableRequest, DisableTableRequest
+from hbasedriver.Connection import Connection
 
 
 class MasterConnection(Connection):

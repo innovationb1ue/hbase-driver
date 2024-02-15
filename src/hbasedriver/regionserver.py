@@ -1,10 +1,11 @@
-from Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, MutationProto, MutateResponse
-from HBase_pb2 import RegionLocation, RegionInfo
+from hbasedriver.protobuf_py.Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, \
+    MutationProto, MutateResponse
+from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo
 
-from src.hbasedriver.Connection import Connection
-from src.hbasedriver.model.row import Row
-from src.hbasedriver.region import Region
-from src.hbasedriver.util import to_bytes
+from hbasedriver.Connection import Connection
+from hbasedriver.model.row import Row
+from hbasedriver.region import Region
+from hbasedriver.util.bytes import to_bytes
 
 
 class RsConnection(Connection):

@@ -1,6 +1,6 @@
-from src.hbasedriver import zk
-from src.hbasedriver.client.table import Table
-from src.hbasedriver.master import MasterConnection
+from hbasedriver import zk
+from hbasedriver.client.table import Table
+from hbasedriver.master import MasterConnection
 
 
 class Client:

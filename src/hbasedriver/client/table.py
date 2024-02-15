@@ -1,7 +1,8 @@
-from src.hbasedriver.meta_server import MetaRsConnection
-from src.hbasedriver.region import Region
-from src.hbasedriver.regionserver import RsConnection
-from src.hbasedriver.zk import locate_meta_region
+from hbasedriver.meta_server import MetaRsConnection
+from hbasedriver.model.row import Row
+from hbasedriver.region import Region
+from hbasedriver.regionserver import RsConnection
+from hbasedriver.zk import locate_meta_region
 
 
 class Table:
@@ -25,7 +26,7 @@ class Table:
         conn = self.get_rs_connection(region)
         return conn.put(region.region_encoded, rowkey, cf_to_qf_vals)
 
-    def get(self, rowkey: bytes, cf_to_qfs: dict):
+    def get(self, rowkey: bytes, cf_to_qfs: dict) -> Row:
         if type(rowkey) != bytes:
             raise ValueError("must provide bytes for rowkey ")
         region: Region = self.locate_target_region(rowkey)

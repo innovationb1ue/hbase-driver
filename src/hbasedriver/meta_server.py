@@ -1,6 +1,6 @@
 from Client_pb2 import ScanRequest, Column, ScanResponse
-from src.hbasedriver.Connection import Connection
-from src.hbasedriver.region import Region
+from hbasedriver.Connection import Connection
+from hbasedriver.region import Region
 
 
 class MetaRsConnection(Connection):

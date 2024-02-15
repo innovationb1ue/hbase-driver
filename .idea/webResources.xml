@@ -6,6 +6,7 @@
         <entryData>
           <resourceRoots>
             <path value="file://$PROJECT_DIR$/pb" />
+            <path value="file://$PROJECT_DIR$/src/hbasedriver/protobuf" />
           </resourceRoots>
         </entryData>
       </entry>

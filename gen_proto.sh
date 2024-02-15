@@ -1,0 +1,1 @@
+protoc  -I ./src/hbasedriver/protobuf/ --python_out=./src/hbasedriver/protobuf_py/ --pyi_out=./src/hbasedriver/protobuf_py/ ./src/hbasedriver/protobuf/*

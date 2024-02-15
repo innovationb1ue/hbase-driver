@@ -34,3 +34,6 @@ class Row:
     @staticmethod
     def from_cell(cell):
         return Row(cell.row, {cell.family: {cell.qualifier: cell.value}})
+
+    def __str__(self):
+        return "Row: key={}, columns={}".format(str(self.rowkey), self.kv)

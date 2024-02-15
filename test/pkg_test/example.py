@@ -1,5 +1,5 @@
 from hbasedriver.client import Client
-from hbasedriver.exceptions import TableExistsException
+from hbasedriver.exceptions.RemoteException import TableExistsException
 
 
 def test_example():
@@ -13,3 +13,7 @@ def test_example():
     table.put(b"row1", {'cf1': {'qf': '666'}})
     result = table.get(b"row1", {'cf1': ['qf']})
     print(result)
+
+
+if __name__ == '__main__':
+    test_example()

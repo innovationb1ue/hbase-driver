@@ -5,8 +5,8 @@ from kazoo.client import KazooClient
 from kazoo.exceptions import NoNodeError
 from kazoo.handlers.threading import KazooTimeoutError
 
-from ZooKeeper_pb2 import Master
-from protobuf_py import ZooKeeper_pb2
+from hbasedriver.protobuf_py import ZooKeeper_pb2
+from hbasedriver.protobuf_py.ZooKeeper_pb2 import Master
 
 logger = logging.getLogger('pybase.' + __name__)
 logger.setLevel(logging.DEBUG)

@@ -3,11 +3,11 @@ from struct import pack, unpack
 
 from google.protobuf import message
 
-from RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
-from src.hbasedriver.exceptions.RemoteException import RemoteException
-from src.hbasedriver.exceptions.RemoteException import TableExistsException
-from src.hbasedriver.response import response_types
-from util.varint import to_varint, decoder
+from hbasedriver.protobuf_py.RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
+from hbasedriver.exceptions.RemoteException import RemoteException
+from hbasedriver.exceptions.RemoteException import TableExistsException
+from hbasedriver.response import response_types
+from hbasedriver.util import to_varint, decoder
 
 
 class Connection:

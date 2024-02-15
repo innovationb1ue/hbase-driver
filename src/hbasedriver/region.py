@@ -1,4 +1,4 @@
-from HBase_pb2 import RegionInfo
+from hbasedriver.protobuf_py.HBase_pb2 import RegionInfo
 
 
 class Region:

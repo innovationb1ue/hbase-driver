@@ -1,6 +1,4 @@
-from src.hbasedriver.client.client import Client
-from src.hbasedriver.regionserver import RsConnection
-from src.hbasedriver.zk import locate_meta_region
+from hbasedriver.client.client import Client
 
 
 def test_put():
