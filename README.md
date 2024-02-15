@@ -12,6 +12,7 @@ Native Hbase driver in Python. (No thrift)
 
 ```python
 from hbasedriver.client import Client
+from hbasedriver.operations import Put, Get
 from hbasedriver.exceptions.RemoteException import TableExistsException
 
 # lets say your hbase instance runs on 127.0.0.1 (zk quorum address)
@@ -21,8 +22,8 @@ try:
 except TableExistsException:
     pass
 table = client.get_table("", "mytable")
-table.put("row1", {'cf1': {'qf': '666'}})
-result = table.get("row1", {'cf1': ['qf']})
+table.put(Put(b'row1').add_column(b'cf1', b'qf', b'666'))
+result = table.get(Get(b"row1").add_column(b'cf1', b'qf'))
 print(result)
 
 ```

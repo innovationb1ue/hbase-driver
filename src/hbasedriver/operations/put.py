@@ -1,6 +1,6 @@
 from collections import defaultdict
 
-from hbasedriver.model.cell import Cell
+from hbasedriver.model import Cell
 
 
 class Put:

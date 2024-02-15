@@ -4,13 +4,13 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = 'hbase-driver'
-version = "0.0.3"
+version = "0.0.4"
 readme = "README.md"
 dependencies = ['kazoo']
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["hbasedriver", "hbasedriver.protobuf_py"]
+packages = ["hbasedriver", "hbasedriver.protobuf_py", "hbasedriver.operations", "hbasedriver.model", "hbasedriver.exceptions", "hbasedriver.client"]
 
 [project.urls]
 Homepage = "https://github.com/innovationb1ue/hbase-driver"
