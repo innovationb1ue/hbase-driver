@@ -20,16 +20,15 @@ znode = "/hbase"
 def locate_meta_region(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5) -> (bytes, bytes):
     if type(zkquorum) != list:
         raise ValueError("must provide a list for zookeeper quorum.")
-    zk = None
     try:
         for host in zkquorum:
             zk = KazooClient(hosts=host, timeout=3)
             zk.start(timeout=establish_connection_timeout)
+            break
+        else:
+            raise Exception("can not connect to zk via any contact point {}".format(zkquorum))
     except KazooTimeoutError:
         raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
-
-    if not zk:
-        raise Exception("can not connect to zk via any contact point {}".format(zkquorum))
 
     # locate meta region
     try:
@@ -73,6 +72,7 @@ def locate_master(zkquorum: list, establish_connection_timeout=5, missing_znode_
         for host in zkquorum:
             zk = KazooClient(hosts=host, timeout=3)
             zk.start(timeout=establish_connection_timeout)
+            break
     except KazooTimeoutError:
         raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
 

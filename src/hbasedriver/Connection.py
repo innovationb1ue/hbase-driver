@@ -106,8 +106,7 @@ class Connection:
 
         pos += header_size
         if header.call_id != call_id:
-            # call_ids don't match? Looks like a different thread nabbed our
-            # response.
+            # this should not happen, currently we don't provide concurrent access throw a single instance.
             raise Exception("call id is wrong. ")
 
         rpc_size, pos = decoder(full_data, pos)

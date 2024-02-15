@@ -11,7 +11,7 @@ class RsConnection(Connection):
     def __init__(self):
         super().__init__("ClientService")
 
-    def put(self, region_name_encoded, rowkey, cf_to_qf_vals: dict):
+    def put(self, region_name_encoded, rowkey: bytes, cf_to_qf_vals: dict):
         """
         Perform a PUT request on this regionserver.
         :param region_name_encoded: encoded region name get by scanning meta.
@@ -26,7 +26,7 @@ class RsConnection(Connection):
         rq.region.value = region_name_encoded
         # set kv pairs
         rq.mutation.mutate_type = MutationProto.MutationType.PUT
-        rq.mutation.row = bytes(rowkey, "utf-8")
+        rq.mutation.row = rowkey
         for cf, qf_value_pairs in cf_to_qf_vals.items():
             col = MutationProto.ColumnValue(family=bytes(cf, 'utf-8'))
             for qf, val in qf_value_pairs.items():
@@ -36,14 +36,14 @@ class RsConnection(Connection):
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
 
-    def get(self, region: Region, rowkey, cf_to_qfs: dict):
+    def get(self, region: Region, rowkey: bytes, cf_to_qfs: dict):
         # send GET request to that region and receive response
         rq = GetRequest()
         # set target region
         rq.region.type = 1
         rq.region.value = region.region_encoded
         # rowkey
-        rq.get.row = bytes(rowkey, 'utf-8')
+        rq.get.row = rowkey
         # cfs
         for cf, qfs in cf_to_qfs.items():
             # get all qualifiers
@@ -60,7 +60,7 @@ class RsConnection(Connection):
         result = Row.from_result(resp.result)
         return result
 
-    def delete(self, region: Region, rowkey, cf_to_qfs: dict):
+    def delete(self, region: Region, rowkey: bytes, cf_to_qfs: dict):
         """
         If provided with cf to no qualifiers, we delete the whole cf.
         If provided with cf to some qualifiers, we delete those qualifiers only.
@@ -74,7 +74,7 @@ class RsConnection(Connection):
         rq.region.type = 1
         rq.region.value = region.region_encoded
 
-        rq.mutation.row = bytes(rowkey, 'utf-8')
+        rq.mutation.row = rowkey
 
         # cfs
         for cf, qfs in cf_to_qfs.items():

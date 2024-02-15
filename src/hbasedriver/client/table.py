@@ -18,17 +18,23 @@ class Table:
         # we might maintain connections to different regionserver.
         self.rs_conns: dict[(bytes, int), RsConnection] = {}
 
-    def put(self, rowkey, cf_to_qf_vals: dict):
+    def put(self, rowkey: bytes, cf_to_qf_vals: dict):
+        if type(rowkey) != bytes:
+            raise ValueError("must provide bytes for rowkey ")
         region: Region = self.locate_target_region(rowkey)
         conn = self.get_rs_connection(region)
         return conn.put(region.region_encoded, rowkey, cf_to_qf_vals)
 
-    def get(self, rowkey, cf_to_qfs: dict):
+    def get(self, rowkey: bytes, cf_to_qfs: dict):
+        if type(rowkey) != bytes:
+            raise ValueError("must provide bytes for rowkey ")
         region: Region = self.locate_target_region(rowkey)
         conn = self.get_rs_connection(region)
         return conn.get(region, rowkey, cf_to_qfs)
 
-    def delete(self, rowkey, cf_to_qfs):
+    def delete(self, rowkey: bytes, cf_to_qfs):
+        if type(rowkey) != bytes:
+            raise ValueError("must provide bytes for rowkey ")
         region: Region = self.locate_target_region(rowkey)
         conn = self.get_rs_connection(region)
         return conn.delete(region, rowkey, cf_to_qfs)
@@ -41,7 +47,11 @@ class Table:
         return conn
 
     def locate_target_region(self, rowkey) -> Region:
-        # todo: check exist region contains this rowkey and return early.
+        # check cached regions first, return if we already touched that region.
+        for region in self.regions.values():
+            if region.key_in_region(rowkey):
+                return region
+
         conn = MetaRsConnection().connect(self.meta_rs_host, self.meta_rs_port)
         region = conn.locate_region(self.ns, self.tb, rowkey)
         self.regions[region.region_info.region_id] = region

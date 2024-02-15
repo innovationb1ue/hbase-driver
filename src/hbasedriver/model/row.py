@@ -14,10 +14,10 @@ class Row:
         self.kv = kv
 
     # get the value of target column, return None if not exist.
-    def get(self, cf, qf):
-        tmp = self.kv.get(bytes(cf, 'utf-8'))
+    def get(self, cf: bytes, qf: bytes):
+        tmp = self.kv.get(cf)
         if tmp:
-            return tmp.get(bytes(qf, 'utf-8'))
+            return tmp.get(qf)
         else:
             return None
 

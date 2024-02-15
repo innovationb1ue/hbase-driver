@@ -10,6 +10,6 @@ def test_example():
     except TableExistsException:
         pass
     table = client.get_table("", "mytable")
-    table.put("row1", {'cf1': {'qf': '666'}})
-    result = table.get("row1", {'cf1': ['qf']})
+    table.put(b"row1", {'cf1': {'qf': '666'}})
+    result = table.get(b"row1", {'cf1': ['qf']})
     print(result)
