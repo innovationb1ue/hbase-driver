@@ -1,3 +1,4 @@
+from hbasedriver.model import CellType
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
 from hbasedriver.operations.put import Put
@@ -28,7 +29,8 @@ class RsConnection(Connection):
             col = MutationProto.ColumnValue(family=family)
             for cell in cells:
                 col.qualifier_value.append(
-                    MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier, value=cell.value))
+                    MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier, value=cell.value,
+                                                             timestamp=cell.ts))
             rq.mutation.column_value.append(col)
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
@@ -70,19 +72,38 @@ class RsConnection(Connection):
         # cfs
         for cf, cells in delete.family_cells.items():
             col = MutationProto.ColumnValue(family=cf)
-            # deleting the whole family by adding a pseudo QualifierValue with no qualifier specified.
-            if len(cells) == 0:
-                col.qualifier_value.append(
-                    MutationProto.ColumnValue.QualifierValue(qualifier=None,
-                                                             delete_type=MutationProto.DELETE_FAMILY))
-            else:
-                # add any qualifier if provided.
-                for cell in cells:
-                    # todo: support more delete types.
-                    # currently we delete all columns smaller than the provided timestamp.
+
+            # add any qualifier if provided.
+            for cell in cells:
+                # delete all columns in the family smaller than the provided timestamp.
+                if cell.type == CellType.DELETE_FAMILY:
                     col.qualifier_value.append(
                         MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier,
-                                                                 delete_type=MutationProto.DELETE_MULTIPLE_VERSIONS))
+                                                                 delete_type=MutationProto.DELETE_FAMILY,
+                                                                 timestamp=cell.ts)
+                    )
+                # delete target column with specified version.
+                elif cell.type == CellType.DELETE:
+                    col.qualifier_value.append(
+                        MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier
+                                                                 , delete_type=MutationProto.DELETE_ONE_VERSION,
+                                                                 timestamp=cell.ts)
+                    )
+                # Delete all versions of the specified column with a timestamp less than or equal to the specified timestamp.
+                elif cell.type == CellType.DELETE_COLUMN:
+                    col.qualifier_value.append(
+                        MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier,
+                                                                 delete_type=MutationProto.DELETE_MULTIPLE_VERSIONS,
+                                                                 timestamp=cell.ts)
+                    )
+                # Delete all columns of the specified family with a timestamp equal to the specified timestamp.
+                elif cell.type == CellType.DELETE_FAMILY_VERSION:
+                    col.qualifier_value.append(
+                        MutationProto.ColumnValue.QualifierValue(qualifier=cell.qualifier,
+                                                                 delete_type=MutationProto.DELETE_FAMILY_VERSION,
+                                                                 timestamp=cell.ts)
+                    )
+
             rq.mutation.column_value.append(col)
 
         resp: MutateResponse = self.send_request(rq, "Mutate")
