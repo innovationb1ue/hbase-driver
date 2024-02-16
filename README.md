@@ -8,6 +8,12 @@ Native Hbase driver in Python. (No thrift)
 - native HBase protocol support (HBase 2.X+)
 - Support both admin operations and regionserver calls.
 
+### Installation (pip)
+
+```
+pip3 install hbase-driver
+```
+
 ### Get Started
 
 ```python
