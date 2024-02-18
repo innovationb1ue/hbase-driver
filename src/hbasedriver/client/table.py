@@ -2,6 +2,7 @@ from hbasedriver.meta_server import MetaRsConnection
 from hbasedriver.model.row import Row
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
+from hbasedriver.operations.scan import Scan
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
 from hbasedriver.zk import locate_meta_region
@@ -42,6 +43,12 @@ class Table:
         region: Region = self.locate_target_region(delete.rowkey)
         conn = self.get_rs_connection(region)
         return conn.delete(region, delete)
+
+    def scan(self, scan: Scan):
+        region: Region = self.locate_target_region(scan.start_row)
+        region: Region = self.locate_target_region(b"row")
+        conn = self.get_rs_connection(region)
+        return conn.scan(region, scan)
 
     def get_rs_connection(self, region: Region):
         conn = self.rs_conns.get((region.host, region.port))

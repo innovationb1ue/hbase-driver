@@ -4,6 +4,9 @@ from hbasedriver.Connection import Connection
 
 
 class MasterConnection(Connection):
+    def clone(self):
+        return MasterConnection.connect(self.host, self.port, self.timeout)
+
     service_name = "MasterService"
 
     def __init__(self):

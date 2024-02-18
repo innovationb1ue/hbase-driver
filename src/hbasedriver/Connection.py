@@ -1,4 +1,6 @@
+import random
 import socket
+from abc import abstractmethod
 from struct import pack, unpack
 
 from google.protobuf import message
@@ -16,6 +18,10 @@ class Connection:
         assert service_name in ["ClientService", "MasterService"]
         self.service_name = service_name
         self.meta_region = None
+        self.host = None
+        self.port = None
+        self.timeout = 60
+        self.user = "pythonHbaseDriver"
 
     def connect(self, host, port=16000, timeout=60, user="pythonHbaseDriver"):
         if type(host) != str:
@@ -24,19 +30,29 @@ class Connection:
             port = int(port)
         self.conn = socket.create_connection((host, port), timeout=timeout)
         ch = ConnectionHeader()
-        ch.user_info.effective_user = user
+        ch.user_info.effective_user = self.user
         ch.service_name = self.service_name
         serialized = ch.SerializeToString()
         # 6 bytes : 'HBas' + RPC_VERSION(0) + AUTH_CODE(80) +
         msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
         self.conn.send(msg)
+        self.host = host
+        self.port = port
+        self.timeout = timeout
+        self.user = user
         return self
+
+    @abstractmethod
+    def clone(self):
+        """
+        build another new connection with the same settings as this.
+        """
+        pass
 
     def send_request(self, req: message.Message, method_name: str, need_response=True):
         rpc_serialized = req.SerializeToString()
-        # todo: save id and check result later
-        # call_id = random.randint(1, 999)
-        call_id = 66
+        call_id = random.randint(1, 999)
+        # call_id = 66
         serialized_header = self._get_call_header_bytes(method_name, call_id)
         rpc_length_bytes = to_varint(len(rpc_serialized)).encode('utf-8')
         total_size = 4 + 1 + len(serialized_header) + len(rpc_length_bytes) + len(rpc_serialized)
@@ -52,7 +68,8 @@ class Connection:
         else:
             return
 
-    def _get_call_header_bytes(self, method_name, call_id: int):
+    @staticmethod
+    def _get_call_header_bytes(method_name, call_id: int):
         header = RequestHeader()
         header.call_id = call_id
         header.method_name = method_name
@@ -63,7 +80,8 @@ class Connection:
     # Receives exactly n bytes from the socket. Will block until n bytes are
     # received. If a socket is closed (RegionServer died) then raise an
     # exception that goes all the way back to the main client
-    def _recv_n(self, sock: socket.socket, n):
+    @staticmethod
+    def _recv_n(sock: socket.socket, n):
         res = b''
         partial_len = 0
         while partial_len < n:

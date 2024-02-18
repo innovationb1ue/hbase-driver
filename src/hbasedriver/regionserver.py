@@ -2,6 +2,7 @@ from hbasedriver.model import CellType
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
 from hbasedriver.operations.put import Put
+from hbasedriver.operations.scan import Scan, ScanResultIterator
 from hbasedriver.protobuf_py.Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, \
     MutationProto, MutateResponse
 from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo
@@ -13,6 +14,12 @@ from hbasedriver.util.bytes import to_bytes
 
 
 class RsConnection(Connection):
+    def clone(self):
+        if not self.host or not self.port:
+            raise Exception("can not clone connection that is not properly initialized. ")
+        new_conn = RsConnection().connect(self.host, self.port)
+        return new_conn
+
     def __init__(self):
         super().__init__("ClientService")
 
@@ -108,3 +115,21 @@ class RsConnection(Connection):
 
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
+
+    def scan(self, region: Region, scan: Scan) -> ScanResultIterator:
+        # this first request to open the scanner.
+        rq = ScanRequest()
+        rq.region.type = 1
+        rq.region.value = region.region_encoded
+        rq.scan.include_start_row = scan.start_row_inclusive
+        rq.scan.start_row = scan.start_row
+        rq.scan.stop_row = scan.end_row
+        rq.scan.include_stop_row = scan.end_row_inclusive
+        rq.number_of_rows = scan.limit
+        rq.renew = True
+        for family, qfs in scan.family_map.items():
+            rq.scan.column.append(Column(family=family))
+        resp: ScanResponse = self.send_request(rq, 'Scan')
+        scanner_id = resp.scanner_id
+        # build an iterator to let client iterate through the result set.
+        return ScanResultIterator(scanner_id, scan, self)
