@@ -2,7 +2,7 @@ from hbasedriver.model import CellType
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
 from hbasedriver.operations.put import Put
-from hbasedriver.operations.scan import Scan, ScanResultIterator
+from hbasedriver.operations.scan import Scan
 from hbasedriver.protobuf_py.Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, \
     MutationProto, MutateResponse
 from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo
@@ -116,7 +116,7 @@ class RsConnection(Connection):
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
 
-    def scan(self, region: Region, scan: Scan) -> ScanResultIterator:
+    def scan(self, region: Region, scan: Scan):
         # this first request to open the scanner.
         rq = ScanRequest()
         rq.region.type = 1
@@ -133,3 +133,21 @@ class RsConnection(Connection):
         scanner_id = resp.scanner_id
         # build an iterator to let client iterate through the result set.
         return ScanResultIterator(scanner_id, scan, self)
+
+
+class ScanResultIterator:
+    def __init__(self, scanner_id: int, scan: Scan, rs_conn: RsConnection):
+        self.scanner_id = scanner_id
+        self.rs_conn = rs_conn
+        self.scan = scan
+
+    def __next__(self):
+        rq2 = ScanRequest()
+        rq2.scanner_id = self.scanner_id
+        rq2.number_of_rows = self.scan.limit
+        resp2: ScanResponse = self.rs_conn.send_request(rq2, "Scan")
+        rows = []
+        for result in resp2.results:
+            row = Row.from_result(result)
+            rows.append(row)
+        return rows

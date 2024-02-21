@@ -1,7 +1,5 @@
 from collections import defaultdict
 
-from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, ScanResponse
-
 
 class Scan:
     MAX_ROWKEY_LENGTH = 32767
@@ -49,18 +47,3 @@ class Scan:
             raise ValueError("rowkey length must be smaller than {}".format(Scan.MAX_ROWKEY_LENGTH))
         self.end_row = end_row
         self.end_row_inclusive = inclusive
-
-
-class ScanResultIterator:
-    def __init__(self, scanner_id: int, scan: Scan, rs_conn):
-        self.scanner_id = scanner_id
-        self.rs_conn = rs_conn
-        self.scan = scan
-
-    def __next__(self):
-        rq2 = ScanRequest()
-        rq2.scanner_id = self.scanner_id
-        rq2.number_of_rows = self.scan.limit
-        resp2: ScanResponse = self.rs_conn.send_request(rq2, "Scan")
-        # todo: build object mapping to rows here.
-        return resp2.results

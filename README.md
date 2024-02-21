@@ -40,8 +40,9 @@ print(result)
 - Put
 - Get
 - DELETE
+- Scan
 
 ### TODOs
 
-- Scan
 - Filters
+- More params in the operations. 

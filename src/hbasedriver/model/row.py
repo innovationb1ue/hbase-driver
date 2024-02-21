@@ -36,4 +36,7 @@ class Row:
         return Row(cell.row, {cell.family: {cell.family: cell.value}})
 
     def __str__(self):
-        return "Row: key={}, columns={}".format(str(self.rowkey), self.kv)
+        return "<Row: key={}, columns={}>".format(str(self.rowkey), self.kv)
+
+    def __repr__(self):
+        return self.__str__()
