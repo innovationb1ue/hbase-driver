@@ -29,11 +29,17 @@ except TableExistsException:
     pass
 table = client.get_table("", "mytable")
 table.put(Put(b'row1').add_column(b'cf1', b'qf', b'666'))
+table.put(Put(b'row1').add_column(b'cf1', b'qf2', b'999'))
 table.put(Put(b'row1').add_column(b'cf2', b'qf', b'777'))
+table.put(Put(b'row2').add_column(b'cf1', b'qf123', b'777'))
 result = table.get(Get(b"row1").add_column(b'cf1', b'qf'))
-print(result)
+print("get result =", result)
+assert b'666' == result.get(b'cf1', b'qf')
 
 scan_result = table.scan(Scan(b"row1").add_family(b'cf1'))
+# retrieve all results from the iterator.
+scan_result = list(scan_result)
+print("scan result below:")
 for row in scan_result:
     print(row)
 ```
