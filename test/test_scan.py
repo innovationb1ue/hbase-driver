@@ -17,5 +17,5 @@ def test_scan():
     resp = table.scan(Scan(b"scan_row_key1").add_family(b'cf1').add_family(b'cf2'))
 
     print(resp)
-    res = next(resp)
-    print(res)
+    for row in resp:
+        print(row)

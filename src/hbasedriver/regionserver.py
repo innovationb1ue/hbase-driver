@@ -132,7 +132,7 @@ class RsConnection(Connection):
         resp: ScanResponse = self.send_request(rq, 'Scan')
         scanner_id = resp.scanner_id
         # build an iterator to let client iterate through the result set.
-        return ScanResultIterator(scanner_id, scan, self)
+        return iter(ScanResultIterator(scanner_id, scan, self))
 
 
 class ScanResultIterator:
@@ -150,4 +150,9 @@ class ScanResultIterator:
         for result in resp2.results:
             row = Row.from_result(result)
             rows.append(row)
+        if len(rows) == 0:
+            raise StopIteration
         return rows
+
+    def __iter__(self):
+        return self
