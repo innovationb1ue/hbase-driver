@@ -12,7 +12,7 @@ class MasterConnection(Connection):
     def __init__(self):
         super().__init__("MasterService")
 
-    def create_table(self, namespace, table, columns, split_keys=None):
+    def create_table(self, namespace: bytes, table: bytes, columns: list[ColumnFamilySchema], split_keys=None):
         """
         Create a hbase table, raise RemoteException if failed or table exists.
         :param namespace:
@@ -26,11 +26,11 @@ class MasterConnection(Connection):
         rq = CreateTableRequest()
 
         rq.split_keys.extend(split_keys)
-        rq.table_schema.table_name.namespace = namespace.encode("utf-8")
-        rq.table_schema.table_name.qualifier = table.encode("utf-8")
+        rq.table_schema.table_name.namespace = namespace
+        rq.table_schema.table_name.qualifier = table
         # add all column definitions
         for c in columns:
-            rq.table_schema.column_families.append(ColumnFamilySchema(name=c.encode("utf-8")))
+            rq.table_schema.column_families.append(c)
 
         self.send_request(rq, "CreateTable")
         # todo: check regions online.
@@ -48,6 +48,9 @@ class MasterConnection(Connection):
         rq.table_name.qualifier = table.encode("utf-8")
         self.send_request(rq, "DisableTable")
         # todo: check table disabled.
+
+    def describe_table(self, namespace: bytes, table: bytes):
+        pass
 
     def delete_table(self, namespace, table):
         rq = DeleteTableRequest()

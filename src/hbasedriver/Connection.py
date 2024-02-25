@@ -2,6 +2,7 @@ import random
 import socket
 from abc import abstractmethod
 from struct import pack, unpack
+from threading import Lock
 
 from google.protobuf import message
 
@@ -22,25 +23,27 @@ class Connection:
         self.port = None
         self.timeout = 60
         self.user = "pythonHbaseDriver"
+        self.lock = Lock()  # Mutex
 
     def connect(self, host, port=16000, timeout=60, user="pythonHbaseDriver"):
-        if type(host) != str:
-            host = host.decode("utf-8")
-        if type(port) != int:
-            port = int(port)
-        self.conn = socket.create_connection((host, port), timeout=timeout)
-        ch = ConnectionHeader()
-        ch.user_info.effective_user = self.user
-        ch.service_name = self.service_name
-        serialized = ch.SerializeToString()
-        # 6 bytes : 'HBas' + RPC_VERSION(0) + AUTH_CODE(80) +
-        msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
-        self.conn.send(msg)
-        self.host = host
-        self.port = port
-        self.timeout = timeout
-        self.user = user
-        return self
+        with self.lock:
+            if type(host) != str:
+                host = host.decode("utf-8")
+            if type(port) != int:
+                port = int(port)
+            self.conn = socket.create_connection((host, port), timeout=timeout)
+            ch = ConnectionHeader()
+            ch.user_info.effective_user = self.user
+            ch.service_name = self.service_name
+            serialized = ch.SerializeToString()
+            # 6 bytes : 'HBas' + RPC_VERSION(0) + AUTH_CODE(80) +
+            msg = b"HBas\x00\x50" + pack(">I", len(serialized)) + serialized
+            self.conn.send(msg)
+            self.host = host
+            self.port = port
+            self.timeout = timeout
+            self.user = user
+            return self
 
     @abstractmethod
     def clone(self):
@@ -50,23 +53,24 @@ class Connection:
         pass
 
     def send_request(self, req: message.Message, method_name: str, need_response=True):
-        rpc_serialized = req.SerializeToString()
-        call_id = random.randint(1, 999)
-        # call_id = 66
-        serialized_header = self._get_call_header_bytes(method_name, call_id)
-        rpc_length_bytes = to_varint(len(rpc_serialized)).encode('utf-8')
-        total_size = 4 + 1 + len(serialized_header) + len(rpc_length_bytes) + len(rpc_serialized)
+        with self.lock:
+            rpc_serialized = req.SerializeToString()
+            call_id = random.randint(1, 999)
+            # call_id = 66
+            serialized_header = self._get_call_header_bytes(method_name, call_id)
+            rpc_length_bytes = to_varint(len(rpc_serialized)).encode('utf-8')
+            total_size = 4 + 1 + len(serialized_header) + len(rpc_length_bytes) + len(rpc_serialized)
 
-        # Total length doesn't include the initial 4 bytes (for the total_length uint32)
-        # size(4bytes) + header size(1byte)
-        to_send = pack(">IB", total_size - 4, len(serialized_header))
-        to_send += serialized_header + rpc_length_bytes + rpc_serialized
+            # Total length doesn't include the initial 4 bytes (for the total_length uint32)
+            # size(4bytes) + header size(1byte)
+            to_send = pack(">IB", total_size - 4, len(serialized_header))
+            to_send += serialized_header + rpc_length_bytes + rpc_serialized
 
-        self.conn.send(to_send)
-        if need_response:
-            return self.receive_rpc(call_id, req, method_name)
-        else:
-            return
+            self.conn.send(to_send)
+            if need_response:
+                return self._receive_rpc(call_id, req, method_name)
+            else:
+                return
 
     @staticmethod
     def _get_call_header_bytes(method_name, call_id: int):
@@ -92,7 +96,7 @@ class Connection:
             res += packet
         return res
 
-    def receive_rpc(self, call_id, rq: message.Message, rq_type: str, data=None):
+    def _receive_rpc(self, call_id, rq: message.Message, rq_type: str, data=None):
         # Total message length is going to be the first four bytes
         # (little-endian uint32)
         try:
