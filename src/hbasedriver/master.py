@@ -1,5 +1,6 @@
-from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema
-from hbasedriver.protobuf_py.Master_pb2 import CreateTableRequest, DeleteTableRequest, DisableTableRequest
+from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableName
+from hbasedriver.protobuf_py.Master_pb2 import CreateTableRequest, DeleteTableRequest, DisableTableRequest, \
+    GetTableDescriptorsRequest, GetTableDescriptorsResponse
 from hbasedriver.Connection import Connection
 
 
@@ -49,8 +50,18 @@ class MasterConnection(Connection):
         self.send_request(rq, "DisableTable")
         # todo: check table disabled.
 
-    def describe_table(self, namespace: bytes, table: bytes):
-        pass
+    def describe_table(self, namespace: bytes, table: bytes) -> GetTableDescriptorsResponse:
+        if namespace is None or len(namespace) == 0:
+            namespace = b"default"
+        rq = GetTableDescriptorsRequest()
+        rq.table_names.append(TableName(namespace=namespace, qualifier=table))
+        return self.send_request(rq, "GetTableDescriptors")
+
+    def list_table_descriptors(self, pattern: str, include_sys_table: bool) -> GetTableDescriptorsResponse:
+        rq = GetTableDescriptorsRequest()
+        rq.regex = pattern
+        rq.include_sys_tables = include_sys_table
+        return self.send_request(rq, "GetTableDescriptors")
 
     def delete_table(self, namespace, table):
         rq = DeleteTableRequest()

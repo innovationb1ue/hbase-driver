@@ -9,17 +9,23 @@ from src.hbasedriver.master import MasterConnection
 host = "127.0.0.1"
 port = 16000
 ms_test_table = 'test_table_master'
-
+order_idx = 0
 
 # tests in this file rely on the execution orders.
 
-@pytest.mark.order(1)
+order_idx += 1
+
+
+@pytest.mark.order(order_idx)
 def test_connect_master():
     client = MasterConnection()
     client.connect(host, port)
 
 
-@pytest.mark.order(2)
+order_idx += 1
+
+
+@pytest.mark.order(order_idx)
 def test_create_table_with_attributes():
     client = MasterConnection()
     client.connect(host, port)
@@ -48,7 +54,22 @@ def test_create_table_with_attributes():
     time.sleep(3)
 
 
-@pytest.mark.order(3)
+order_idx += 1
+
+
+@pytest.mark.order(order_idx)
+def test_describe_table():
+    client = MasterConnection().connect(host, port)
+    resp = client.describe_table(b"", b"test_table_master")
+    assert len(resp.table_schema) >= 1
+    table_names = [i.table_name.qualifier for i in resp.table_schema]
+    assert b'test_table_master' in table_names
+
+
+order_idx += 1
+
+
+@pytest.mark.order(order_idx)
 def test_disable_table():
     client = MasterConnection().connect(host, port)
     client.disable_table("", "test_table_master")
@@ -57,7 +78,10 @@ def test_disable_table():
     time.sleep(1)
 
 
-@pytest.mark.order(4)
+order_idx += 1
+
+
+@pytest.mark.order(order_idx)
 def test_delete_table():
     client = MasterConnection()
     client.connect(host, port)
