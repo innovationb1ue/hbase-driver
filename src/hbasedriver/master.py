@@ -36,17 +36,19 @@ class MasterConnection(Connection):
         self.send_request(rq, "CreateTable")
         # todo: check regions online.
 
-    def enable_table(self, ns, tb):
+    def enable_table(self, ns: bytes, tb: bytes):
         rq = DisableTableRequest()
-        rq.table_name.namespace = ns.encode("utf-8")
-        rq.table_name.qualifier = tb.encode("utf-8")
+        rq.table_name.namespace = ns
+        rq.table_name.qualifier = tb
         self.send_request(rq, "EnableTable")
         # todo: check table enabled.
 
-    def disable_table(self, namespace, table):
+    def disable_table(self, namespace: bytes, table: bytes):
         rq = DisableTableRequest()
-        rq.table_name.namespace = namespace.encode("utf-8")
-        rq.table_name.qualifier = table.encode("utf-8")
+        if namespace is None or len(namespace) == 0:
+            namespace = b'default'
+        rq.table_name.namespace = namespace
+        rq.table_name.qualifier = table
         self.send_request(rq, "DisableTable")
         # todo: check table disabled.
 
@@ -63,11 +65,13 @@ class MasterConnection(Connection):
         rq.include_sys_tables = include_sys_table
         return self.send_request(rq, "GetTableDescriptors")
 
-    def delete_table(self, namespace, table):
+    def delete_table(self, namespace: bytes, table: bytes):
         rq = DeleteTableRequest()
+        if namespace is None or len(namespace) == 0:
+            namespace = b'default'
 
-        rq.table_name.namespace = namespace.encode("utf-8")
-        rq.table_name.qualifier = table.encode("utf-8")
+        rq.table_name.namespace = namespace
+        rq.table_name.qualifier = table
 
         self.send_request(rq, "DeleteTable")
         # todo : check regions offline.

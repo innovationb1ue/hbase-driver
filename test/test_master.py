@@ -2,6 +2,7 @@ import time
 
 import pytest
 
+from hbasedriver.client import Client
 from hbasedriver.exceptions.RemoteException import TableExistsException
 from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
 from src.hbasedriver.master import MasterConnection
@@ -27,8 +28,7 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_create_table_with_attributes():
-    client = MasterConnection()
-    client.connect(host, port)
+    client = Client([host])
 
     # Define column families
     cf1_builder = ColumnFamilyDescriptorBuilder(b"cf1")
@@ -73,10 +73,10 @@ order_idx += 1
 @pytest.mark.order(order_idx)
 def test_disable_table():
     client = MasterConnection().connect(host, port)
-    client.disable_table("", "test_table_master")
-    client.enable_table("", "test_table_master")
-    client.disable_table("", "test_table_master")
-    time.sleep(1)
+    client.disable_table(None, b"test_table_master")
+    client.enable_table(None, b"test_table_master")
+    client.disable_table(None, b"test_table_master")
+    time.sleep(2)
 
 
 order_idx += 1
@@ -86,4 +86,4 @@ order_idx += 1
 def test_delete_table():
     client = MasterConnection()
     client.connect(host, port)
-    client.delete_table("", "test_table_master")
+    client.delete_table(None, b"test_table_master")

@@ -19,7 +19,7 @@ class Client:
     def refresh_master(self):
         self.master_host, self.master_port = zk.locate_meta_region(self.zk_quorum)
 
-    def create_table(self, ns, tb, columns, split_keys=None):
+    def create_table(self, ns: bytes, tb: bytes, columns, split_keys=None):
         self.master.create_table(ns, tb, columns, split_keys)
 
     def get_table(self, ns, tb):

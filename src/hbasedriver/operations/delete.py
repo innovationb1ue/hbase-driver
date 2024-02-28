@@ -5,6 +5,9 @@ from hbasedriver.model.cell import Cell, CellType
 
 class Delete:
     def __init__(self, rowkey: bytes):
+        """
+        If no more method call for this Delete object, we will delete everything with this row key.
+        """
         self.rowkey = rowkey
         self.family_cells: dict[bytes, list[Cell]] = defaultdict(list)
 

@@ -23,7 +23,7 @@ class RsConnection(Connection):
     def __init__(self):
         super().__init__("ClientService")
 
-    def put(self, region_name_encoded: bytes, put: Put):
+    def put(self, region_name_encoded: bytes, put: Put) -> bool:
         # send put request to the target region and receive response(processed?)
         rq = MutateRequest()
         # set target region
@@ -76,7 +76,7 @@ class RsConnection(Connection):
 
         rq.mutation.row = delete.rowkey
 
-        # cfs
+        # add specifications if there is any.
         for cf, cells in delete.family_cells.items():
             col = MutationProto.ColumnValue(family=cf)
 
