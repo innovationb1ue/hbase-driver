@@ -38,6 +38,8 @@ class MasterConnection(Connection):
 
     def enable_table(self, ns: bytes, tb: bytes):
         rq = DisableTableRequest()
+        if ns is None or len(ns) == 0:
+            ns = b"default"
         rq.table_name.namespace = ns
         rq.table_name.qualifier = tb
         self.send_request(rq, "EnableTable")
