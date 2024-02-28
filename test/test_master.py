@@ -64,6 +64,7 @@ def test_describe_table():
     assert len(resp.table_schema) >= 1
     table_names = [i.table_name.qualifier for i in resp.table_schema]
     assert b'test_table_master' in table_names
+    print(resp)
 
 
 order_idx += 1

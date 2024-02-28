@@ -14,13 +14,13 @@ class Client:
     def __init__(self, zk_quorum: list):
         self.zk_quorum = zk_quorum
         self.master_host, self.master_port = zk.locate_master(zk_quorum)
-        self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
+        self.master = MasterConnection().connect(self.master_host, self.master_port)
 
     def refresh_master(self):
         self.master_host, self.master_port = zk.locate_meta_region(self.zk_quorum)
 
     def create_table(self, ns, tb, columns, split_keys=None):
-        self.master_conn.create_table(ns, tb, columns, split_keys)
+        self.master.create_table(ns, tb, columns, split_keys)
 
     def get_table(self, ns, tb):
         return Table(self.zk_quorum, ns, tb)

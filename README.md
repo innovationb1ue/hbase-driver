@@ -44,6 +44,36 @@ for row in scan_result:
     print(row)
 ```
 
+#### Master (metadata) operations
+
+```Python
+from hbasedriver.client import Client
+
+client = Client(["127.0.0.1"])
+# describe table
+res = client.master.describe_table(None, "mytable")
+print(res)
+# table_name {
+#     namespace: "default"
+#     qualifier: "test_table_master"
+#   }
+#   attributes {
+#     first: "IS_META"
+#     second: "false"
+#   }
+#   attributes {
+#     first: "hbase.store.file-tracker.impl"
+#     second: "DEFAULT"
+#   }
+#   column_families {
+#     name: "cf1"
+#     attributes {
+#       first: "INDEX_BLOCK_ENCODING"
+#       second: "NONE"
+#     }
+# ..........
+```
+
 ### Implemented
 
 - Create, Disable, Delete table
