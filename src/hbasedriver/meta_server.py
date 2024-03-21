@@ -4,6 +4,9 @@ from hbasedriver.region import Region
 
 
 class MetaRsConnection(Connection):
+    def clone(self):
+        return MetaRsConnection.connect(self.host, self.port, self.timeout, user=self.user)
+
     def __init__(self):
         super().__init__("ClientService")
 

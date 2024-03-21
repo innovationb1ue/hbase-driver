@@ -57,9 +57,9 @@ def test_example():
     assert result is None
 
     # disable table
-    client.master.disable_table(None, b"mytable")
+    client.master_conn.disable_table(None, b"mytable")
     time.sleep(1)
-    client.master.delete_table(None, b"mytable")
+    client.master_conn.delete_table(None, b"mytable")
 
 
 if __name__ == '__main__':

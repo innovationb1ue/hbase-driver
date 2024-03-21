@@ -75,9 +75,9 @@ result = table.get(Get(b"row1").add_column(b'cf1', b'qf'))
 assert result is None
 
 # disable table
-client.master.disable_table(None, b"mytable")
+client.master_conn.disable_table(None, b"mytable")
 time.sleep(1)
-client.master.delete_table(None, b"mytable")
+client.master_conn.delete_table(None, b"mytable")
 ```
 
 #### Master (metadata) operations
@@ -87,7 +87,7 @@ from hbasedriver.client import Client
 
 client = Client(["127.0.0.1"])
 # describe table
-res = client.master.describe_table(None, "mytable")
+res = client.master_conn.describe_table(None, "mytable")
 print(res)
 # table_name {
 #     namespace: "default"

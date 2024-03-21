@@ -50,6 +50,7 @@ def test_create_table_with_attributes():
     try:
         client.create_table(b"", b"test_table_master", column_families, split_keys=[b"111111", b"222222", b"333333"])
     except TableExistsException:
+        print("table already exist. ")
         pass
     time.sleep(3)
 

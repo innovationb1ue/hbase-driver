@@ -1,3 +1,5 @@
+import time
+
 from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableName
 from hbasedriver.protobuf_py.Master_pb2 import CreateTableRequest, DeleteTableRequest, DisableTableRequest, \
     GetTableDescriptorsRequest, GetTableDescriptorsResponse
@@ -34,7 +36,6 @@ class MasterConnection(Connection):
             rq.table_schema.column_families.append(c)
 
         self.send_request(rq, "CreateTable")
-        # todo: check regions online.
 
     def enable_table(self, ns: bytes, tb: bytes):
         rq = DisableTableRequest()
@@ -43,6 +44,9 @@ class MasterConnection(Connection):
         rq.table_name.namespace = ns
         rq.table_name.qualifier = tb
         self.send_request(rq, "EnableTable")
+        # sleep some time for hbase to react.
+        time.sleep(1)
+
         # todo: check table enabled.
 
     def disable_table(self, namespace: bytes, table: bytes):
