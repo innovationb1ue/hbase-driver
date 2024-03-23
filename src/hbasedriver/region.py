@@ -13,6 +13,7 @@ class Region:
         self.host = host
         self.port = port
         self.region_info = region_info
+        self.state = None
 
     @staticmethod
     def from_cells(cells):

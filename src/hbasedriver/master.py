@@ -56,7 +56,7 @@ class MasterConnection(Connection):
         rq.table_name.namespace = namespace
         rq.table_name.qualifier = table
         self.send_request(rq, "DisableTable")
-        # todo: check table disabled.
+        # todo: check table disabled (all regions are closed).
 
     def describe_table(self, namespace: bytes, table: bytes) -> GetTableDescriptorsResponse:
         if namespace is None or len(namespace) == 0:
