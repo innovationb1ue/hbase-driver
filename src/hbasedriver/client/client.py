@@ -59,6 +59,24 @@ class Client:
                 raise RuntimeError(
                     "when creating table, all the regions are not online after 30s. check your hbase instance. ")
 
+    def get_region_in_state_count(self, ns: bytes, tb: bytes, target_state: str, timeout=10):
+        region_states = self.get_region_states(ns, tb)
+        start = time.time()
+        count = 0
+        while count != len(region_states):
+            count = 0
+            for region_state in region_states.values():
+                if region_state == target_state:
+                    count += 1
+            if count == len(region_states):
+                break
+            else:
+                region_states = self.get_region_states(ns, tb)
+            now = time.time()
+            if now - start > timeout:
+                raise TimeoutError("wait regions in state {} timeout {}s".format(target_state, timeout))
+        return count
+
     def get_region_states(self, ns: bytes, tb: bytes):
         """
         Returns a map that encoded region name to region state ('OPEN', 'CLOSED')
@@ -95,6 +113,13 @@ class Client:
 
     def disable_table(self, ns: bytes, tb: bytes):
         self.master_conn.disable_table(ns, tb)
+        count = self.get_region_in_state_count(ns, tb, "CLOSED")
+
+    def enable_table(self, ns: bytes, tb: bytes):
+        self.master_conn.enable_table(ns, tb)
 
     def get_table(self, ns, tb):
         return Table(self.zk_quorum, ns, tb, self.meta_conn)
+
+    def describe_table(self, ns: bytes, tb: bytes):
+        return self.master_conn.describe_table(ns, tb)

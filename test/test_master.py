@@ -9,12 +9,20 @@ from src.hbasedriver.master import MasterConnection
 
 host = "127.0.0.1"
 port = 16000
-ms_test_table = 'test_table_master'
+ms_test_table = b'test_table_master'
 order_idx = 0
 
 # tests in this file rely on the execution orders.
 
 order_idx += 1
+
+# before all test in this file: drop table first.
+try:
+    client = Client([host])
+    client.disable_table(b'', ms_test_table)
+    client.delete_table(b'', ms_test_table)
+except:
+    pass
 
 
 @pytest.mark.order(order_idx)
@@ -60,7 +68,7 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_describe_table():
-    client = MasterConnection().connect(host, port)
+    client = Client([host])
     resp = client.describe_table(b"", b"test_table_master")
     assert len(resp.table_schema) >= 1
     table_names = [i.table_name.qualifier for i in resp.table_schema]
@@ -73,10 +81,10 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_disable_table():
-    client = MasterConnection().connect(host, port)
-    client.disable_table(None, b"test_table_master")
-    client.enable_table(None, b"test_table_master")
-    client.disable_table(None, b"test_table_master")
+    client = Client([host])
+    client.disable_table(b'', b"test_table_master")
+    client.enable_table(b'', b"test_table_master")
+    client.disable_table(b'', b"test_table_master")
     time.sleep(2)
 
 
@@ -85,6 +93,5 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_delete_table():
-    client = MasterConnection()
-    client.connect(host, port)
-    client.delete_table(None, b"test_table_master")
+    client = Client([host])
+    client.delete_table(b'', b"test_table_master")
