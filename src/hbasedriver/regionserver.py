@@ -5,7 +5,7 @@ from hbasedriver.operations.put import Put
 from hbasedriver.operations.scan import Scan
 from hbasedriver.protobuf_py.Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, \
     MutationProto, MutateResponse
-from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo
+from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo, TimeRange
 
 from hbasedriver.Connection import Connection
 from hbasedriver.model.row import Row
@@ -50,6 +50,9 @@ class RsConnection(Connection):
         rq.region.value = region_name_encoded
         # rowkey
         rq.get.row = get.rowkey
+        rq.get.max_versions = get.max_versions
+        rq.get.time_range = TimeRange(get.time_ranges[1])
+        rq.get.existence_only = get.check_existence_only
         # cfs
         for cf, qfs in get.family_columns.items():
             # get all qualifiers

@@ -14,7 +14,7 @@ class Table:
     This class contains data operations within a table.
     """
 
-    def __init__(self, zk_quorum, ns, tb, meta_conn=None):
+    def __init__(self, zk_quorum, ns, tb):
         self.ns = ns
         self.tb = tb
         self.meta_rs_host, self.meta_rs_port = locate_meta_region(zk_quorum)
@@ -35,7 +35,7 @@ class Table:
 
     def delete(self, delete: Delete):
         """
-
+        :param delete:
         :param rowkey:
         :param cf_to_qfs:
         :return:
