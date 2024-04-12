@@ -36,8 +36,6 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_create_table_with_attributes():
-    client = Client([host])
-
     # Define column families
     cf1_builder = ColumnFamilyDescriptorBuilder(b"cf1")
     cf1_builder.set_compression_type(b"SNAPPY")
@@ -68,7 +66,6 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_describe_table():
-    client = Client([host])
     resp = client.describe_table(b"", b"test_table_master")
     assert len(resp.table_schema) >= 1
     table_names = [i.table_name.qualifier for i in resp.table_schema]
