@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from hbasedriver.filter.filter import Filter
+
 
 class Get:
     def __init__(self, rowkey: bytes):
@@ -8,6 +10,7 @@ class Get:
         self.time_ranges = (0, 0x7fffffffffffffff)
         self.max_versions = 1
         self.check_existence_only = False
+        self.filter: Filter | None = None
 
     def add_family(self, family: bytes):
         self.family_columns[family] = []
@@ -29,6 +32,9 @@ class Get:
         if versions <= 0:
             raise Exception("versions must be positive")
         self.max_versions = versions
+
+    def set_filter(self, filter_in: Filter):
+        self.filter = filter_in
 
     def set_check_existence_only(self, check_existence_only):
         self.check_existence_only = check_existence_only

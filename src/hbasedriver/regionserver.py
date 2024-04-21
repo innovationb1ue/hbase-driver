@@ -53,6 +53,7 @@ class RsConnection(Connection):
         rq.get.max_versions = get.max_versions
         rq.get.time_range = TimeRange(get.time_ranges[1])
         rq.get.existence_only = get.check_existence_only
+        rq.get.filter = get.filter
         # cfs
         for cf, qfs in get.family_columns.items():
             # get all qualifiers

@@ -3,9 +3,9 @@ from enum import Enum
 from typing import List
 import io
 
+from hbasedriver.filter.byte_array_comparable import ByteArrayComparable
 from hbasedriver.filter.compare_operator import CompareOperator
-
-ByteArrayComparable, CompareFilter, Filter, ReturnCode
+from hbasedriver.filter.filter import ReturnCode
 
 
 class RowFilter(CompareFilter):
@@ -32,11 +32,11 @@ class RowFilter(CompareFilter):
     def to_byte_array(self) -> bytes:
         builder = FilterProtos.RowFilter.newBuilder()
         builder.setCompareFilter(self.convert())
-        return builder.build().toByteArray()
+        return builder.build().to_byte_array()
 
     @staticmethod
     def parse_from(pb_bytes: bytes):
-        proto = FilterProtos.RowFilter.parseFrom(pb_bytes)
+        proto = FilterProtos.RowFilter.parse_from(pb_bytes)
         value_compare_op = CompareOperator.Value(proto.getCompareFilter().getCompareOp().name)
         value_comparator = None
         if proto.getCompareFilter().hasComparator():

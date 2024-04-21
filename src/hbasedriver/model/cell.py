@@ -22,3 +22,12 @@ class Cell:
         self.value = value
         self.ts = Cell.LATEST_TIMESTAMP if ts is None else ts
         self.type = cell_type
+
+    def get_row_array(self):
+        return self.value
+
+    def get_family_array(self):
+        return self.family
+
+    def get_qualifier_array(self):
+        return self.qualifier
