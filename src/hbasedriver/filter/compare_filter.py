@@ -4,6 +4,7 @@ from typing import List, Union
 from hbasedriver.filter.byte_array_comparable import ByteArrayComparable
 from hbasedriver.filter.compare_operator import CompareOperator
 from hbasedriver.filter.filter_base import FilterBase
+from hbasedriver.model import Cell
 from hbasedriver.protobuf_py.Filter_pb2 import CompareFilter as CompareFilterProto
 from hbasedriver.protobuf_py.Comparator_pb2 import Comparator as ComparatorProto
 
