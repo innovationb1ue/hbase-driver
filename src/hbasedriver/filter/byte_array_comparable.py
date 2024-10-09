@@ -6,6 +6,11 @@ class ByteArrayComparable(ABC):
     def __init__(self, value: bytes):
         self.value = value
 
+    # subclass should override this to return exact JAVA class name for server to locate the handle class.
+    @abstractmethod
+    def get_name(self):
+        pass
+
     def get_value(self) -> bytes:
         return self.value
 

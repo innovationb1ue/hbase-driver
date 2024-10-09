@@ -21,10 +21,19 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
+from hbasedriver.filter.rowfilter import RowFilter
+
 
 class Filter(ABC):
     def __init__(self):
         self.reversed = False
+
+    @abstractmethod
+    def get_name(self):
+        """
+        return java class full name
+        """
+        pass
 
     @abstractmethod
     def reset(self):
@@ -103,9 +112,9 @@ class Filter(ABC):
         """
         pass
 
-    @classmethod
+    @staticmethod
     @abstractmethod
-    def parse_from(cls, pb_bytes):
+    def parse_from(pb_bytes: bytes) -> RowFilter:
         """
         Deserialize the filter.
         """

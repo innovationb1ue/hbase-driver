@@ -5,6 +5,7 @@ from hbasedriver.operations.put import Put
 from hbasedriver.operations.scan import Scan
 from hbasedriver.protobuf_py.Client_pb2 import GetRequest, Column, ScanRequest, ScanResponse, MutateRequest, \
     MutationProto, MutateResponse
+from hbasedriver.protobuf_py.Filter_pb2 import Filter
 from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo, TimeRange
 
 from hbasedriver.Connection import Connection
@@ -129,6 +130,7 @@ class RsConnection(Connection):
         rq.scan.start_row = scan.start_row
         rq.scan.stop_row = scan.end_row
         rq.scan.include_stop_row = scan.end_row_inclusive
+        rq.scan.filter = Filter(scan.filter.get_name(), scan.filter.to_byte_array())
         rq.number_of_rows = scan.limit
         rq.renew = True
         for family, qfs in scan.family_map.items():

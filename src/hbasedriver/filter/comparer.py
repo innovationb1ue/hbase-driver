@@ -11,7 +11,7 @@ class Comparer:
         return Comparer.INSTANCE
 
     @staticmethod
-    def compare_to(self, buf1: bytearray, o1: int, l1: int, buf2: bytearray, o2: int, l2: int) -> int:
+    def compare_to(buf1: bytes, o1: int, l1: int, buf2: bytes, o2: int, l2: int) -> int:
         end1 = o1 + l1
         end2 = o2 + l2
         for i in range(o1, end1):
@@ -27,7 +27,7 @@ class Comparer:
         return l1 - l2
 
     @staticmethod
-    def compare_to_with_buffer(self, buf1: bytearray, o1: int, l1: int, buf2: bytearray, o2: int, l2: int) -> int:
+    def compare_to_with_buffer(self, buf1: bytes, o1: int, l1: int, buf2: bytes, o2: int, l2: int) -> int:
         end1 = o1 + l1
         end2 = o2 + l2
         for i in range(o1, end1):

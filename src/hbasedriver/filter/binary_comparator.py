@@ -5,6 +5,9 @@ from hbasedriver.protobuf_py.Comparator_pb2 import ByteArrayComparable as ByteAr
 
 
 class BinaryComparator(ByteArrayComparable):
+    def get_name(self):
+        return "org.apache.hadoop.hbase.filter.BinaryComparator"
+
     def __init__(self, value):
         super().__init__(value)
 
@@ -14,10 +17,10 @@ class BinaryComparator(ByteArrayComparable):
     def compare_to_with_buffer(self, value: bytes, offset, length):
         return Comparer.get_instance().compare_to(self.value, 0, len(self.value), value, offset, length)
 
-    def to_byte_array(self):
+    def to_byte_array(self) -> bytes:
         comparator_proto = BinaryComparatorProto()
         comparator_proto.comparable = ByteArrayComparableProto(self.value)
-        return comparator_proto
+        return comparator_proto.SerializeToString()
 
     @staticmethod
     def parse_from(pb_bytes):

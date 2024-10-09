@@ -1,5 +1,7 @@
 from collections import defaultdict
 
+from hbasedriver.filter.filter import Filter
+
 
 class Scan:
     MAX_ROWKEY_LENGTH = 32767
@@ -13,6 +15,7 @@ class Scan:
         self.max_stamp: int = 0x7fffffffffffffff
         self.family_map: dict[bytes, list] = defaultdict(list)
         self.limit: int = 20
+        self.filter: Filter = None
 
     # Get all columns from the specified family.
     def add_family(self, family: bytes):
@@ -47,3 +50,6 @@ class Scan:
             raise ValueError("rowkey length must be smaller than {}".format(Scan.MAX_ROWKEY_LENGTH))
         self.end_row = end_row
         self.end_row_inclusive = inclusive
+
+    def set_filter(self, filter_in: Filter):
+        self.filter = filter_in
