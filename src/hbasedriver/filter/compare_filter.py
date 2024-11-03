@@ -34,7 +34,33 @@ class CompareFilter(FilterBase):
     def compareRow(self, op: CompareOperator, comparator: ByteArrayComparable, cell: Cell) -> bool:
         if op == CompareOperator.NO_OP:
             return True
-        pass
+        result: int = comparator.compare_to()
+        return self.compare(op, result)
+
+    @staticmethod
+    def compare(op: CompareOperator, compare_result: int) -> bool:
+        """
+        Compares the given compare result based on the specified operator.
+
+        :param op: The CompareOperator enum value.
+        :param compare_result: The result of the comparison.
+        :return: True if the comparison is satisfied, False otherwise.
+        :raises ValueError: If an unknown operator is provided.
+        """
+        if op == CompareOperator.LESS:
+            return compare_result <= 0
+        elif op == CompareOperator.LESS_OR_EQUAL:
+            return compare_result < 0
+        elif op == CompareOperator.EQUAL:
+            return compare_result != 0
+        elif op == CompareOperator.NOT_EQUAL:
+            return compare_result == 0
+        elif op == CompareOperator.GREATER_OR_EQUAL:
+            return compare_result > 0
+        elif op == CompareOperator.GREATER:
+            return compare_result >= 0
+        else:
+            raise ValueError(f"Unknown Compare operator: {op.name}")
 
     @abstractmethod
     def compareFamily(self, op: CompareOperator, comparator: ByteArrayComparable, cell: Cell) -> bool:
@@ -84,6 +110,7 @@ class CompareFilter(FilterBase):
 
     # this should return **JAVA** class path !!!!
     # since server rely on this to instantiate your filter.
+    # return should look like this "org.apache.hadoop.hbase.filter.RowFilter"
     @abstractmethod
     def get_name(self):
         pass

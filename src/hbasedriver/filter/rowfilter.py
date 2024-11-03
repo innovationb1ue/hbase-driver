@@ -9,6 +9,7 @@ from hbasedriver.filter.compare_filter import CompareFilter
 from hbasedriver.filter.compare_operator import CompareOperator
 from hbasedriver.filter.filter import ReturnCode, Filter
 import hbasedriver.protobuf_py.Filter_pb2 as FilterProtos
+from hbasedriver.model import Cell
 
 
 # /**
@@ -23,6 +24,24 @@ import hbasedriver.protobuf_py.Filter_pb2 as FilterProtos
 #  * {@link org.apache.hadoop.hbase.CellScanner} start and stop rows directly rather than a filter.
 #  */
 class RowFilter(CompareFilter):
+    def compareRow(self, op: CompareOperator, comparator: ByteArrayComparable, cell: Cell) -> bool:
+        return super().compareRow(op, comparator, cell)
+
+    def compareFamily(self, op: CompareOperator, comparator: ByteArrayComparable, cell: Cell) -> bool:
+        pass
+
+    def compareQualifier(self, op: CompareOperator, comparator: ByteArrayComparable, cell: Cell) -> bool:
+        pass
+
+    def compareValue(self, op: CompareOperator, comparator: ByteArrayComparable, cell: Cell) -> bool:
+        pass
+
+    def get_name(self):
+        return "org.apache.hadoop.hbase.filter.RowFilter"
+
+    def filterRowKey(self, cell: Cell) -> bool:
+        pass
+
     def __init__(self, op: CompareOperator, row_comparator: ByteArrayComparable):
         super().__init__(op, row_comparator)
         self.filter_out_row = False

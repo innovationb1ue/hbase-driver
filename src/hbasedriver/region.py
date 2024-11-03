@@ -38,7 +38,8 @@ class Region:
         """
         This checks the provided row key belong to this region.
         """
-        return self.region_info.start_key <= rowkey < self.region_info.end_key
+        return (self.region_info.start_key <= rowkey
+                and (rowkey < self.region_info.end_key or self.region_info.end_key == b''))
 
     def get_region_name(self) -> bytes:
         return self.region_encoded

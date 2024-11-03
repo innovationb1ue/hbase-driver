@@ -11,7 +11,6 @@ from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo, TimeRa
 from hbasedriver.Connection import Connection
 from hbasedriver.model.row import Row
 from hbasedriver.region import Region
-from hbasedriver.util.bytes import to_bytes
 
 
 class RsConnection(Connection):
@@ -43,7 +42,7 @@ class RsConnection(Connection):
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
 
-    def get(self, region_name_encoded, get: Get):
+    def get(self, region_name_encoded, get: Get) -> 'Row':
         # send GET request to that region and receive response
         rq = GetRequest()
         # set target region
@@ -121,8 +120,10 @@ class RsConnection(Connection):
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
 
-    def scan(self, region: Region, scan: Scan):
+    def scan(self, region: Region, scan: Scan) -> 'ResultScanner':
         # this first request to open the scanner.
+
+        # todo: refactor this to only return a valid resultScanner.
         rq = ScanRequest()
         rq.region.type = 1
         rq.region.value = region.region_encoded
@@ -130,7 +131,8 @@ class RsConnection(Connection):
         rq.scan.start_row = scan.start_row
         rq.scan.stop_row = scan.end_row
         rq.scan.include_stop_row = scan.end_row_inclusive
-        rq.scan.filter = Filter(scan.filter.get_name(), scan.filter.to_byte_array())
+        if scan.filter is not None:
+            rq.scan.filter = Filter(scan.filter.get_name(), scan.filter.to_byte_array())
         rq.number_of_rows = scan.limit
         rq.renew = True
         for family, qfs in scan.family_map.items():
@@ -138,27 +140,8 @@ class RsConnection(Connection):
         resp: ScanResponse = self.send_request(rq, 'Scan')
         scanner_id = resp.scanner_id
         # build an iterator to let client iterate through the result set.
-        return iter(ScanResultIterator(scanner_id, scan, self))
+        return ResultScanner(scanner_id, scan, self)
 
-
-class ScanResultIterator:
-    def __init__(self, scanner_id: int, scan: Scan, rs_conn: RsConnection):
-        self.scanner_id = scanner_id
-        self.rs_conn = rs_conn
-        self.scan = scan
-
-    def __next__(self):
-        rq2 = ScanRequest()
-        rq2.scanner_id = self.scanner_id
-        rq2.number_of_rows = self.scan.limit
-        resp2: ScanResponse = self.rs_conn.send_request(rq2, "Scan")
-        rows = []
-        for result in resp2.results:
-            row = Row.from_result(result)
-            rows.append(row)
-        if len(rows) == 0:
-            raise StopIteration
-        return rows
-
-    def __iter__(self):
-        return self
+    # todo: impl this like the java code.
+    def get_scanner(self, scan: Scan) -> 'ResultScanner':
+        pass

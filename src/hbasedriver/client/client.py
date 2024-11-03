@@ -2,15 +2,18 @@ import time
 
 from hbasedriver import zk
 from hbasedriver.client.table import Table
+from hbasedriver.common.table_name import TableName
 from hbasedriver.master import MasterConnection
 from hbasedriver.meta_server import MetaRsConnection
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.region import Region
+from hbasedriver.zk import locate_meta_region
 
 
 class Client:
     """
     Client class only contains Admin operations .
+    Act like Connection in Java HBase driver.
 
     Table and data manipulation actions are in class Table.
     Get Table instance by Client.get_table(ns, tb)
@@ -25,10 +28,9 @@ class Client:
         self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
         self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)
 
-    def refresh_master(self):
-        self.master_host, self.master_port = zk.locate_meta_region(self.zk_quorum)
-
-    def create_table(self, ns: bytes, tb: bytes, columns, split_keys=None):
+    def create_table(self, ns: bytes | None, tb: bytes, columns, split_keys=None):
+        if ns is None:
+            ns = b""
         self.master_conn.create_table(ns, tb, columns, split_keys)
         # check regions online
         self.check_regions_online(ns, tb, split_keys)
@@ -119,7 +121,19 @@ class Client:
         self.master_conn.enable_table(ns, tb)
 
     def get_table(self, ns, tb):
-        return Table(self.zk_quorum, ns, tb, self.meta_conn)
+        return Table(self.zk_quorum, ns, tb)
+
+    def get_admin(self):
+        pass
 
     def describe_table(self, ns: bytes, tb: bytes):
         return self.master_conn.describe_table(ns, tb)
+
+    def __rebuild_connection(self):
+        self.master_host, self.master_port = zk.locate_meta_region(self.zk_quorum)
+        self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
+        self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)
+
+    def locate_region(self, table_name: TableName, row: bytes):
+        if table_name == TableName.META_TABLE_NAME:
+            locate_meta_region(self.zk_quorum)

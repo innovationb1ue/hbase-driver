@@ -4,7 +4,7 @@ from abc import ABC, abstractmethod
 class ByteArrayComparable(ABC):
 
     def __init__(self, value: bytes):
-        self.value = value
+        self.value: bytes = value
 
     # subclass should override this to return exact JAVA class name for server to locate the handle class.
     @abstractmethod

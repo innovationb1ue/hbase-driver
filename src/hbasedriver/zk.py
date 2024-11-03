@@ -64,20 +64,20 @@ def locate_meta_region(zkquorum: list, establish_connection_timeout=5, missing_z
     return hostname, port
 
 
-def locate_master(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5):
-    if type(zkquorum) != list:
+def locate_master(zk_quorum: list, establish_connection_timeout=5, missing_znode_retries=5):
+    if not isinstance(zk_quorum, list):
         raise ValueError("must provide a list for zookeeper quorum.")
     zk = None
     try:
-        for host in zkquorum:
+        for host in zk_quorum:
             zk = KazooClient(hosts=host, timeout=3)
             zk.start(timeout=establish_connection_timeout)
             break
     except KazooTimeoutError:
-        raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
+        raise Exception("Cannot connect to ZooKeeper at {}".format(zk_quorum[0]))
 
     if not zk:
-        raise Exception("can not connect to zk via any contact point {}".format(zkquorum))
+        raise Exception("can not connect to zk via any contact point {}".format(zk_quorum))
 
     # locate master
     try:

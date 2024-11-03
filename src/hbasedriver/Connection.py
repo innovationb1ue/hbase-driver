@@ -27,9 +27,9 @@ class Connection:
 
     def connect(self, host, port=16000, timeout=60, user="pythonHbaseDriver"):
         with self.lock:
-            if type(host) != str:
+            if not isinstance(host, str):
                 host = host.decode("utf-8")
-            if type(port) != int:
+            if not isinstance(port, int):
                 port = int(port)
             self.conn = socket.create_connection((host, port), timeout=timeout)
             ch = ConnectionHeader()

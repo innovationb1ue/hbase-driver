@@ -15,7 +15,7 @@ class Scan:
         self.max_stamp: int = 0x7fffffffffffffff
         self.family_map: dict[bytes, list] = defaultdict(list)
         self.limit: int = 20
-        self.filter: Filter = None
+        self.filter: Filter | None = None
 
     # Get all columns from the specified family.
     def add_family(self, family: bytes):

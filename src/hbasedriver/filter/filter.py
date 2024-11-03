@@ -21,8 +21,6 @@
 from abc import ABC, abstractmethod
 from enum import Enum
 
-from hbasedriver.filter.rowfilter import RowFilter
-
 
 class Filter(ABC):
     def __init__(self):
@@ -114,7 +112,7 @@ class Filter(ABC):
 
     @staticmethod
     @abstractmethod
-    def parse_from(pb_bytes: bytes) -> RowFilter:
+    def parse_from(pb_bytes: bytes) -> 'Filter':
         """
         Deserialize the filter.
         """
