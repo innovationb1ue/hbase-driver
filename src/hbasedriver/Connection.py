@@ -6,6 +6,7 @@ from threading import Lock
 
 from google.protobuf import message
 
+from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
 from hbasedriver.exceptions.RemoteException import RemoteException
 from hbasedriver.exceptions.RemoteException import TableExistsException
@@ -13,6 +14,7 @@ from hbasedriver.response import response_types
 from hbasedriver.util import to_varint, decoder
 
 
+# Client will directly use this class to get Table, get Admin and other interfaces.
 class Connection:
     def __init__(self, service_name):
         self.conn: socket.socket | None = None
@@ -140,3 +142,7 @@ class Connection:
         rpc.ParseFromString(full_data[pos: pos + rpc_size])
         # The rpc is fully built!
         return rpc
+
+    def get_region_locator(self, table_name: TableName):
+        from hbasedriver.client.region_locator import RegionLocator
+        return RegionLocator(table_name, self)

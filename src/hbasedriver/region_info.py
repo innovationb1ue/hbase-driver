@@ -99,3 +99,6 @@ class RegionInfo:
             b[offset] = ENC_SEPARATOR
 
         return bytes(b)
+
+
+FIRST_META_REGIONINFO = RegionInfo(TableName.META_TABLE_NAME, b'', b'', False, 1, 0, False)

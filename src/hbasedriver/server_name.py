@@ -10,6 +10,7 @@ class ServerName:
         self.host = hostname
         self.port = port
         self.start_code = start_code
+        self.server_name = self.get_server_name(self.host, self.port, self.start_code)
 
     @staticmethod
     def get_server_name(hostname: str, port: int, start_code: int):
