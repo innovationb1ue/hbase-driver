@@ -1,11 +1,12 @@
 from struct import unpack
 
+from hbasedriver.master1.region_state import RegionState
 from hbasedriver.protobuf_py import ZooKeeper_pb2
 from kazoo.client import KazooClient
 
 from hbasedriver import hconstants
 from hbasedriver.hregion_location import HRegionLocation
-from hbasedriver.protobuf_py.ClusterStatus_pb2 import RegionState
+from hbasedriver.protobuf_py.ClusterStatus_pb2 import RegionState as RegionStateProto
 from hbasedriver.znode_paths import ZNodePaths
 
 import logging
@@ -39,11 +40,11 @@ class ZKConnectionRegistry:
             rsp, znodestat = self.zk.get(meta_znode_path)
 
             meta_proto = self.__get_meta_proto(rsp)
-            state = meta_proto.state
+            state = RegionState.convert(meta_proto.state)
             sn_proto = meta_proto.server
             from hbasedriver.server_name import ServerName
             server_name = ServerName(sn_proto.host_name, sn_proto.port, sn_proto.start_code)
-            if state != RegionState.OPEN:
+            if state != RegionStateProto.OPEN:
                 logger.warning("Meta region is in state %s", state)
             from hbasedriver.region_info import FIRST_META_REGIONINFO
             locations[replica_id] = HRegionLocation(FIRST_META_REGIONINFO, server_name, hconstants.NO_SEQNUM)
