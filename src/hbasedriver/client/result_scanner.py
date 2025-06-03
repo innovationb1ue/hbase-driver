@@ -2,6 +2,7 @@ from hbasedriver.model import Row
 from hbasedriver.operations import Scan
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest
 from hbasedriver.region import Region
+from hbasedriver.regionserver import RsConnection
 
 
 class ResultScanner:

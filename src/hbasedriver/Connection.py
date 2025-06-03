@@ -13,8 +13,6 @@ from hbasedriver.exceptions.RemoteException import TableExistsException
 from hbasedriver.response import response_types
 from hbasedriver.util import to_varint, decoder
 
-
-# Client will directly use this class to get Table, get Admin and other interfaces.
 class Connection:
     def __init__(self, service_name):
         self.conn: socket.socket | None = None
@@ -46,6 +44,9 @@ class Connection:
             self.timeout = timeout
             self.user = user
             return self
+
+    def get_admin(self):
+
 
     @abstractmethod
     def clone(self):

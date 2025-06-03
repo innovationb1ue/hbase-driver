@@ -1,6 +1,7 @@
 import time
 
 from hbasedriver import zk
+from hbasedriver.client.admin import Admin
 from hbasedriver.client.table import Table
 from hbasedriver.common.table_name import TableName
 from hbasedriver.master import MasterConnection
@@ -10,6 +11,8 @@ from hbasedriver.region import Region
 from hbasedriver.zk import locate_meta_region
 
 
+# this actually like the Connection in java impl.
+# Client will directly use this class to get Table, get Admin and other interfaces.
 class Client:
     """
     Client class only contains Admin operations .
@@ -34,6 +37,9 @@ class Client:
         self.master_conn.create_table(ns, tb, columns, split_keys)
         # check regions online
         self.check_regions_online(ns, tb, split_keys)
+
+    def get_admin(self):
+        return Admin(self)
 
     def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list):
         # Construct a ScanRequest to check if regions are online for each split key
@@ -122,9 +128,6 @@ class Client:
 
     def get_table(self, ns, tb):
         return Table(self.zk_quorum, ns, tb)
-
-    def get_admin(self):
-        pass
 
     def describe_table(self, ns: bytes, tb: bytes):
         return self.master_conn.describe_table(ns, tb)

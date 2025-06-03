@@ -9,11 +9,13 @@ from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorB
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
 from hbasedriver.operations.put import Put
+from hbasedriver.table_name import TableName
 
 
 @pytest.fixture
 def table():
     client = Client(["127.0.0.1"])
+    admin = client.get_admin()
 
     # Define column families
     cf1_builder = ColumnFamilyDescriptorBuilder(b"cf1")
@@ -22,6 +24,7 @@ def table():
     cf2_descriptor = cf2_builder.build()
     column_families = [cf1_descriptor, cf2_descriptor]
     try:
+        admin.table_exists(TableName.value_of(b'', b'test_table'))
         client.create_table(b"", b"test_table", column_families)
     except TableExistsException:
         pass

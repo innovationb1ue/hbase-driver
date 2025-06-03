@@ -12,8 +12,9 @@ class MasterConnection(Connection):
 
     service_name = "MasterService"
 
-    def __init__(self):
+    def __init__(self, client):
         super().__init__("MasterService")
+        self.client = client
 
     def create_table(self, namespace: bytes, table: bytes, columns: list[ColumnFamilySchema], split_keys=None):
         """
