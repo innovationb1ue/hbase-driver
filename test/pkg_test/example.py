@@ -5,6 +5,9 @@ def test_example():
     from hbasedriver.exceptions.RemoteException import TableExistsException
     from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
 
+    conf = dict()
+    conf[HConst]
+
     # lets say your hbase instance runs on 127.0.0.1 (zk quorum address)
     client = Client(["127.0.0.1"])
 

@@ -2,6 +2,7 @@ import time
 
 from hbasedriver import zk
 from hbasedriver.client.admin import Admin
+from hbasedriver.client.cluster_connection import ClusterConnection
 from hbasedriver.client.table import Table
 from hbasedriver.common.table_name import TableName
 from hbasedriver.master import MasterConnection
@@ -27,6 +28,8 @@ class Client:
         self.zk_quorum = zk_quorum
         self.master_host, self.master_port = zk.locate_master(zk_quorum)
         self.meta_host, self.meta_port = zk.locate_meta_region(zk_quorum)
+
+        self.cluster_connection = ClusterConnection()
 
         self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
         self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)

@@ -6,6 +6,7 @@ from threading import Lock
 
 from google.protobuf import message
 
+from hbasedriver.client.admin import Admin
 from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
 from hbasedriver.exceptions.RemoteException import RemoteException
@@ -13,6 +14,8 @@ from hbasedriver.exceptions.RemoteException import TableExistsException
 from hbasedriver.response import response_types
 from hbasedriver.util import to_varint, decoder
 
+
+# encapsule low level connections to zookeeper and servers.
 class Connection:
     def __init__(self, service_name):
         self.conn: socket.socket | None = None
@@ -46,7 +49,7 @@ class Connection:
             return self
 
     def get_admin(self):
-
+        return Admin()
 
     @abstractmethod
     def clone(self):
