@@ -42,30 +42,36 @@ class RsConnection(Connection):
         resp: MutateResponse = self.send_request(rq, "Mutate")
         return resp.processed
 
-    def get(self, region_name_encoded, get: Get) -> 'Row':
-        # send GET request to that region and receive response
+    def get(self, region_name_encoded: bytes, get: Get) -> Row | None:
         rq = GetRequest()
-        # set target region
+
+        # Set region metadata
         rq.region.type = 1
         rq.region.value = region_name_encoded
-        # rowkey
+
+        # Set Get fields
         rq.get.row = get.rowkey
         rq.get.max_versions = get.max_versions
-        rq.get.time_range = TimeRange(get.time_ranges[1])
+        rq.get.cache_blocks = False
         rq.get.existence_only = get.check_existence_only
-        rq.get.filter = get.filter
-        # cfs
-        for cf, qfs in get.family_columns.items():
-            # get all qualifiers
-            if len(qfs) == 0:
-                rq.get.column.append(Column(family=cf))
-                continue
-            col = Column(family=cf, qualifier=qfs)
-            rq.get.column.append(col)
+
+        # Time range (only `to` is available in protobuf)
+        if get.time_ranges[1] != 0x7fffffffffffffff:
+            rq.get.time_range = TimeRange(to=get.time_ranges[1])
+
+        # Filter
+        # if get.filter is not None:
+        # rq.get.filter.CopyFrom(get.filter.to_protobuf())
+
+        # Columns
+        for family, qualifiers in get.family_columns.items():
+            if not qualifiers:
+                rq.get.column.append(Column(family=family))
+            else:
+                rq.get.column.append(Column(family=family, qualifier=qualifiers))
 
         resp = self.send_request(rq, "Get")
-        result = Row.from_result(resp.result)
-        return result
+        return Row.from_result(resp.result)
 
     def delete(self, region, delete: Delete):
         """

@@ -1,5 +1,5 @@
 from hbasedriver.common.table_name import TableName
-from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema
+from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableState
 
 
 class Admin:
@@ -14,8 +14,8 @@ class Admin:
 
     def table_exists(self, table_name: TableName) -> bool:
         try:
-            self.master.describe_table(table_name.ns, table_name.tb)
-            return True
+            schemas = self.master.describe_table(table_name.ns, table_name.tb)
+            return len(schemas.table_schema) != 0
         except Exception:
             return False
 
@@ -33,14 +33,15 @@ class Admin:
 
     def enable_table(self, table_name: TableName):
         self.master.enable_table(table_name.ns, table_name.tb)
+        self.client.get_region_in_state_count(table_name.ns, table_name.tb, "OPEN")
 
     def is_table_disabled(self, table_name: TableName) -> bool:
-        region_states = self.client.get_region_states(table_name.ns, table_name.tb)
-        return all(state == "CLOSED" for state in region_states.values())
+        state = self.client.get_table_state(table_name.ns, table_name.tb)
+        return state.state == TableState.DISABLED
 
     def is_table_enabled(self, table_name: TableName) -> bool:
-        region_states = self.client.get_region_states(table_name.ns, table_name.tb)
-        return all(state == "OPEN" for state in region_states.values())
+        state = self.client.get_table_state(table_name.ns, table_name.tb)
+        return state.state == TableState.ENABLED
 
     def describe_table(self, table_name: TableName):
         return self.master.describe_table(table_name.ns, table_name.tb)

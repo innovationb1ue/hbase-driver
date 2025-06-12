@@ -1,14 +1,12 @@
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.Connection import Connection
 from hbasedriver.region import Region
+from hbasedriver.regionserver import RsConnection
 
 
-class MetaRsConnection(Connection):
+class MetaRsConnection(RsConnection):
     def clone(self):
         return MetaRsConnection.connect(self.host, self.port, self.timeout, user=self.user)
-
-    def __init__(self):
-        super().__init__("ClientService")
 
     # locate the region with given rowkey and table name. (must be called on rs with meta region)
     def locate_region(self, ns, tb, rowkey) -> Region:

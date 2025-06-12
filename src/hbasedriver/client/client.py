@@ -7,139 +7,146 @@ from hbasedriver.client.table import Table
 from hbasedriver.common.table_name import TableName
 from hbasedriver.master import MasterConnection
 from hbasedriver.meta_server import MetaRsConnection
+from hbasedriver.operations import Get
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
+from hbasedriver.protobuf_py.HBase_pb2 import TableState
 from hbasedriver.region import Region
 from hbasedriver.zk import locate_meta_region
 
 
-# this actually like the Connection in java impl.
-# Client will directly use this class to get Table, get Admin and other interfaces.
 class Client:
     """
-    Client class only contains Admin operations .
-    Act like Connection in Java HBase driver.
-
-    Table and data manipulation actions are in class Table.
-    Get Table instance by Client.get_table(ns, tb)
-
+    Client acts like HBase Java Connection.
+    Provides access to Admin, Table, and region metadata.
     """
 
-    def __init__(self, zk_quorum: list):
+    def __init__(self, zk_quorum: list[str]):
         self.zk_quorum = zk_quorum
         self.master_host, self.master_port = zk.locate_master(zk_quorum)
         self.meta_host, self.meta_port = zk.locate_meta_region(zk_quorum)
 
-        self.cluster_connection = ClusterConnection()
+        self.cluster_connection = ClusterConnection({})
 
         self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
         self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)
 
-    def create_table(self, ns: bytes | None, tb: bytes, columns, split_keys=None):
-        if ns is None:
-            ns = b""
-        self.master_conn.create_table(ns, tb, columns, split_keys)
-        # check regions online
-        self.check_regions_online(ns, tb, split_keys)
-
-    def get_admin(self):
+    def get_admin(self) -> Admin:
         return Admin(self)
 
-    def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list):
-        # Construct a ScanRequest to check if regions are online for each split key
-        online_regions = 0
-        fail_count = 0
-        # we get it here waiting no time will result to empty result.
+    def get_table(self, ns: bytes | None, tb: bytes) -> Table:
+        return Table(self.zk_quorum, ns or b"default", tb)
+
+    def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]):
         time.sleep(1)
+        attempts = 0
+        expected = len(split_keys) or 1  # At least 1 region
 
-        while online_regions != len(split_keys):
-            # get all region states and check the keys.
-            # todo: do we need to check the keys match the provided splitkey?
-            rs = self.get_region_states(ns, tb)
+        while attempts < 10:
+            region_states = self.get_region_states(ns, tb)
+            online = sum(1 for state in region_states.values() if state == "OPEN")
+            if online >= expected:
+                return
+            time.sleep(3)
+            attempts += 1
 
-            # check region status
-            online_regions = 0
-            for region_state in rs.values():
-                if region_state == 'OPEN':
-                    online_regions += 1
+        raise RuntimeError("Timeout: Not all regions came online after table creation.")
 
-            if online_regions != len(split_keys):
-                fail_count += 1
-                time.sleep(3)
-
-            if fail_count > 10:
-                raise RuntimeError(
-                    "when creating table, all the regions are not online after 30s. check your hbase instance. ")
-
-    def get_region_in_state_count(self, ns: bytes, tb: bytes, target_state: str, timeout=10):
-        region_states = self.get_region_states(ns, tb)
-        start = time.time()
-        count = 0
-        while count != len(region_states):
-            count = 0
-            for region_state in region_states.values():
-                if region_state == target_state:
-                    count += 1
-            if count == len(region_states):
-                break
-            else:
-                region_states = self.get_region_states(ns, tb)
-            now = time.time()
-            if now - start > timeout:
-                raise TimeoutError("wait regions in state {} timeout {}s".format(target_state, timeout))
-        return count
-
-    def get_region_states(self, ns: bytes, tb: bytes):
+    def get_table_state(self, ns: bytes, tb: bytes) -> TableState | None:
         """
-        Returns a map that encoded region name to region state ('OPEN', 'CLOSED')
+        Returns the logical table state ('ENABLED', 'DISABLED', etc.) from hbase:meta using a direct Get.
+        This does not reflect region-level state but the table metadata state.
         """
-        # Construct a ScanRequest to retrieve region states for the given namespace and table
-        rq = ScanRequest()
-        if ns is None or len(ns) == 0:
-            rq.scan.start_row = tb + b","
+        # Construct the logical table rowkey
+        if not ns or ns == b"default":
+            rowkey = tb
         else:
-            rq.scan.start_row = ns + b':' + tb + b","
-        rq.scan.column.append(Column(family="info".encode("utf-8")))
-        rq.number_of_rows = 1000  # Adjust the number of rows as needed
-        rq.region.type = 1
-        rq.region.value = "hbase:meta,,1".encode('utf-8')
+            rowkey = ns + b":" + tb
 
-        # Send the scan request to the meta region server
+        get = Get(rowkey)
+        get.add_column(b"table", b"state")
+
+        result = self.meta_conn.get(b"hbase:meta,,1", get)
+
+        if result is None:
+            return None
+
+        val = result.get(b"table", b"state")
+        state = TableState()
+        state.ParseFromString(val)
+        return state
+
+    def get_region_states(self, ns: bytes, tb: bytes) -> dict[str, str]:
+        """
+        Returns a map from region encoded name to region state ('OPEN', 'CLOSED') for the given table only.
+        Filters out unrelated table and non-region rows.
+        """
+        rq = ScanRequest()
+
+        # Compute scan prefix
+        if not ns or ns == b"default":
+            prefix = tb
+        else:
+            prefix = ns + b":" + tb  # matches full table name in HBase
+
+        # Compute stop row to avoid scanning other tables
+        stop_row = bytearray(prefix)
+        for i in reversed(range(len(stop_row))):
+            if stop_row[i] != 0xFF:
+                stop_row[i] += 1
+                stop_row = stop_row[:i + 1]
+                break
+        else:
+            stop_row.append(0x00)
+
+        rq.scan.start_row = bytes(prefix)
+        rq.scan.include_start_row = True;
+        rq.scan.stop_row = bytes(stop_row)
+        rq.scan.column.append(Column(family=b"info"))
+        rq.number_of_rows = 1000
+        rq.region.type = 1
+        rq.region.value = b"hbase:meta,,1"
+
         scan_resp: ScanResponse = self.meta_conn.send_request(rq, "Scan")
 
         region_states = {}
-        # Process the scan response to extract region states
         for result in scan_resp.results:
-            region_info = Region.from_cells(result.cell)
-            region_name = region_info.get_region_name()
-            region_state = None
-            for cell in result.cell:
-                if cell.qualifier == b'state':
-                    region_state = cell.value.decode('utf-8')
-                    break
-            region_states[region_name] = region_state
+            # Skip table-level state entries (e.g., row key == table name with no region suffix)
+            rowkey = result.cell[0].row
+            if rowkey.startswith(prefix) and b',' in rowkey[len(prefix):]:
+                # this is a region-level row
+                region = Region.from_cells(result.cell)
+                encoded_name = region.get_region_name()
+                state = None
+                for cell in result.cell:
+                    if cell.family == b"info" and cell.qualifier == b"state":
+                        state = cell.value.decode("utf-8")
+                        break
+                if state:
+                    region_states[encoded_name] = state
+
         return region_states
 
-    def delete_table(self, ns: bytes, tb: bytes):
-        self.master_conn.delete_table(ns, tb)
-
-    def disable_table(self, ns: bytes, tb: bytes):
-        self.master_conn.disable_table(ns, tb)
-        count = self.get_region_in_state_count(ns, tb, "CLOSED")
-
-    def enable_table(self, ns: bytes, tb: bytes):
-        self.master_conn.enable_table(ns, tb)
-
-    def get_table(self, ns, tb):
-        return Table(self.zk_quorum, ns, tb)
+    def get_region_in_state_count(self, ns: bytes, tb: bytes, target_state: str, timeout=10):
+        start = time.time()
+        while True:
+            states = self.get_region_states(ns, tb)
+            count = sum(1 for s in states.values() if s == target_state)
+            if count == len(states):
+                return count
+            if time.time() - start > timeout:
+                raise TimeoutError(f"Timeout waiting for all regions in state: {target_state}")
+            time.sleep(1)
 
     def describe_table(self, ns: bytes, tb: bytes):
         return self.master_conn.describe_table(ns, tb)
 
-    def __rebuild_connection(self):
-        self.master_host, self.master_port = zk.locate_meta_region(self.zk_quorum)
-        self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
-        self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)
-
     def locate_region(self, table_name: TableName, row: bytes):
         if table_name == TableName.META_TABLE_NAME:
-            locate_meta_region(self.zk_quorum)
+            return locate_meta_region(self.zk_quorum)
+        return self.meta_conn.locate_region(table_name.ns, table_name.tb, row)
+
+    def __rebuild_connection(self):
+        self.master_host, self.master_port = zk.locate_master(self.zk_quorum)
+        self.meta_host, self.meta_port = zk.locate_meta_region(self.zk_quorum)
+        self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
+        self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)

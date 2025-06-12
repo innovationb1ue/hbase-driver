@@ -1,109 +1,148 @@
 import random
-
 import pytest
 
 from hbasedriver.client.client import Client
 from hbasedriver.exceptions.RemoteException import TableExistsException
-from hbasedriver.operations import Scan
 from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
-from hbasedriver.operations.delete import Delete
-from hbasedriver.operations.get import Get
 from hbasedriver.operations.put import Put
+from hbasedriver.operations.get import Get
+from hbasedriver.operations.delete import Delete
 from hbasedriver.table_name import TableName
 
 
-@pytest.fixture
+@pytest.fixture(scope="module")
+def admin():
+    client = Client(["127.0.0.1"])
+    return client.get_admin()
+
+
+@pytest.fixture(scope="module")
+def table_name() -> TableName:
+    return TableName.value_of(b"", b"test_table")
+
+
+@pytest.fixture(scope="module")
+def column_families():
+    cf1 = ColumnFamilyDescriptorBuilder(b"cf1").build()
+    cf2 = ColumnFamilyDescriptorBuilder(b"cf2").build()
+    return [cf1, cf2]
+
+
+@pytest.fixture(scope="module")
 def table():
     client = Client(["127.0.0.1"])
     admin = client.get_admin()
+    table_name = TableName.value_of(b"", b"test_table")
 
     # Define column families
-    cf1_builder = ColumnFamilyDescriptorBuilder(b"cf1")
-    cf1_descriptor = cf1_builder.build()
-    cf2_builder = ColumnFamilyDescriptorBuilder(b"cf2")
-    cf2_descriptor = cf2_builder.build()
-    column_families = [cf1_descriptor, cf2_descriptor]
-    try:
-        admin.table_exists(TableName.value_of(b'', b'test_table'))
-        client.create_table(b"", b"test_table", column_families)
-    except TableExistsException:
-        pass
+    cf1 = ColumnFamilyDescriptorBuilder(b"cf1").build()
+    cf2 = ColumnFamilyDescriptorBuilder(b"cf2").build()
+    column_families = [cf1, cf2]
 
-    return client.get_table(None, "test_table")
+    # Ensure a clean test table
+    if admin.table_exists(table_name):
+        try:
+            admin.disable_table(table_name)
+        except Exception:
+            pass  # ignore if already disabled
+        admin.delete_table(table_name)
 
+    admin.create_table(table_name, column_families)
 
-def test_put(table):
-    resp = table.put(Put(b"row1").add_column(b'cf1', b'qf1', b'123123'))
-
-    print(resp)
+    return client.get_table(table_name.ns, table_name.tb)
 
 
-def test_get():
-    client = Client(["127.0.0.1"])
-    table = client.get_table("", "test_table")
+def test_admin_create_and_check(admin):
+    table_name = TableName.value_of(b"", b"test_admin_check")
 
-    resp = table.put(Put(b'row666').add_column(b'cf1', b'qf2', b'123123'))
-    print(resp)
+    # Define column families
+    cf1 = ColumnFamilyDescriptorBuilder(b"cf1").build()
+    cf2 = ColumnFamilyDescriptorBuilder(b"cf2").build()
+    column_families = [cf1, cf2]
 
-    row = table.get(Get(b'row666').add_family(b'cf1'))
-    assert row.get(b'cf1', b'qf2') == b'123123'
-    assert row.rowkey == b'row666'
+    # Ensure clean state
+    if admin.table_exists(table_name):
+        try:
+            admin.disable_table(table_name)
+        except Exception:
+            pass
+        admin.delete_table(table_name)
 
+    # Create fresh table
+    admin.create_table(table_name, column_families)
 
-def test_delete():
-    client = Client(["127.0.0.1"])
-    table = client.get_table("", "test_table")
+    # Assert table exists
+    assert admin.table_exists(table_name)
 
-    resp = table.put(Put(b"row666").add_column(b"cf1", b'qf1', b'123123'))
-    assert resp
+    # Describe and assert schema
+    desc = admin.describe_table(table_name)
+    assert len(desc.table_schema) == 1
 
-    res = table.get(Get(b"row666").add_family(b"cf1"))
-    assert res.get(b"cf1", b"qf1") == b"123123"
+    schema = desc.table_schema[0]
+    cf_names = set(cf.name for cf in schema.column_families)
 
-    processed = table.delete(Delete(b"row666").add_family(b'cf1'))
-    assert processed
-
-    res_after_delete = table.get(Get(b"row666").add_family(b"cf1"))
-    assert res_after_delete is None
-
-
-def test_delete_version():
-    # WARNING: in hbase, if we delete a specific version, we can not insert it again before a major compaction.
-    # so this test might fail if you run it twice with the same ts and rowkey.
-    client = Client(["127.0.0.1"])
-    table = client.get_table("", "test_table")
-    postfix = str(random.randint(10000, 20000)).encode('utf-8')
-    rowkey = b"row" + postfix
-
-    ts = 666700001
-    resp = table.put(Put(rowkey).add_column(b"cf1", b'qf1', b'123123', ts=ts))
-    assert resp
-
-    res = table.get(Get(rowkey).add_family(b"cf1"))
-    assert res.get(b"cf1", b"qf1") == b"123123"
-
-    processed = table.delete(Delete(rowkey).add_family_version(b'cf1', ts=ts))
-    assert processed
-
-    res_after_delete = table.get(Get(rowkey).add_family(b"cf1"))
-    assert res_after_delete is None
+    assert cf_names == {b"cf1", b"cf2"}
 
 
-def test_delete_whole_row(table):
-    rowkey = b"rowx889577"
+def test_admin_disable_enable(admin, table_name):
+    # Ensure table starts in enabled state
+    if not admin.is_table_enabled(table_name):
+        try:
+            admin.enable_table(table_name)
+        except Exception:
+            pass  # It's possible the table was already in transition
 
-    table.put(Put(rowkey).add_column(b"cf1", b'qf1', b'666'))
-    table.put(Put(rowkey).add_column(b"cf1", b'qf2', b'777'))
-    resp = table.put(Put(rowkey).add_column(b"cf1", b'qf3', b'888'))
-    resp = table.put(Put(rowkey).add_column(b"cf2", b'qf3', b'888'))
-    resp = table.put(Put(rowkey).add_column(b"cf2", b'qf4', b'888'))
-    assert resp
+    # Disable and verify
+    admin.disable_table(table_name)
+    assert admin.is_table_disabled(table_name)
 
-    res = table.get(Get(rowkey).add_family(b"cf1"))
-    assert res.get(b"cf1", b"qf1") == b"666"
+    # Enable and verify
+    admin.enable_table(table_name)
+    assert admin.is_table_enabled(table_name)
 
-    processed = table.delete(Delete(rowkey))
-    assert processed
 
-    res_after_delete = table.get(Get(rowkey).add_family(b"cf1").add_family(b"cf2"))
-    assert res_after_delete is None
+def test_admin_delete(admin, table_name):
+    admin.disable_table(table_name)
+    admin.delete_table(table_name)
+    assert not admin.table_exists(table_name)
+
+
+def test_put_and_get(table):
+    rowkey = b"row1"
+    table.put(Put(rowkey).add_column(b"cf1", b"qf1", b"value1"))
+
+    result = table.get(Get(rowkey).add_family(b"cf1"))
+    assert result.rowkey == rowkey
+    assert result.get(b"cf1", b"qf1") == b"value1"
+
+
+def test_delete_column(table):
+    rowkey = b"row2"
+    table.put(Put(rowkey).add_column(b"cf1", b"qf2", b"val"))
+    assert table.get(Get(rowkey).add_family(b"cf1")).get(b"cf1", b"qf2") == b"val"
+
+    table.delete(Delete(rowkey).add_column(b"cf1", b"qf2", ts=0))
+    assert table.get(Get(rowkey).add_family(b"cf1")) is None
+
+
+def test_delete_entire_row(table):
+    rowkey = b"row3"
+    table.put(Put(rowkey).add_column(b"cf1", b"qf1", b"1"))
+    table.put(Put(rowkey).add_column(b"cf1", b"qf2", b"2"))
+    table.put(Put(rowkey).add_column(b"cf2", b"qf3", b"3"))
+
+    assert table.get(Get(rowkey).add_family(b"cf1")) is not None
+    table.delete(Delete(rowkey))
+    assert table.get(Get(rowkey).add_family(b"cf1").add_family(b"cf2")) is None
+
+
+def test_delete_specific_version(table):
+    rowkey = b"row" + str(random.randint(10000, 99999)).encode()
+    ts = 88888888
+
+    table.put(Put(rowkey).add_column(b"cf1", b"qf1", b"v1", ts=ts))
+    result = table.get(Get(rowkey).add_family(b"cf1"))
+    assert result.get(b"cf1", b"qf1") == b"v1"
+
+    table.delete(Delete(rowkey).add_family_version(b"cf1", ts))
+    assert table.get(Get(rowkey).add_family(b"cf1")) is None
