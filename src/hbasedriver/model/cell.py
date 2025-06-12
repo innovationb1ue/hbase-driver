@@ -1,4 +1,5 @@
 import enum
+import time
 
 
 class CellType(enum.Enum):
@@ -20,7 +21,7 @@ class Cell:
         self.family = family
         self.qualifier = qualifier
         self.value = value
-        self.ts = Cell.LATEST_TIMESTAMP if ts is None else ts
+        self.ts = int(time.time_ns() // 1e6) if ts is None else ts
         self.type = cell_type
 
     def get_row_array(self):

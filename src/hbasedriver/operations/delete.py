@@ -5,28 +5,36 @@ from hbasedriver.model.cell import Cell, CellType
 
 class Delete:
     def __init__(self, rowkey: bytes):
-        """
-        If no more method call for this Delete object, we will delete everything with this row key.
-        """
         self.rowkey = rowkey
         self.family_cells: dict[bytes, list[Cell]] = defaultdict(list)
+        self.LONG_MAX = 0x7fffffffffffffff
 
-    # Delete the specified version of the specified column.
-    def add_column(self, family: bytes, qualifier: bytes, ts: int):
-        self.family_cells[family].append(Cell(self.rowkey, family, qualifier, ts=ts, cell_type=CellType.DELETE))
+    def add_column(self, family: bytes, qualifier: bytes, ts: int = None):
+        ts = self.LONG_MAX if ts is None else ts
+        self.family_cells[family].append(
+            Cell(self.rowkey, family, qualifier, ts=ts, cell_type=CellType.DELETE)
+        )
         return self
 
-    # Delete all versions of the specified column with a timestamp less than or equal to the
-    # specified timestamp.
     def add_columns(self, family: bytes, qualifier: bytes, ts: int):
-        self.family_cells[family].append(Cell(self.rowkey, family, qualifier, ts, cell_type=CellType.DELETE_COLUMN))
+        self.family_cells[family].append(
+            Cell(self.rowkey, family, qualifier, ts=ts, cell_type=CellType.DELETE_COLUMN)
+        )
+        return self
 
-    # Delete all columns of the specified family with a timestamp equal to the specified timestamp.
     def add_family_version(self, family: bytes, ts: int = None):
-        self.family_cells[family].append(Cell(self.rowkey, family, ts=ts, cell_type=CellType.DELETE_FAMILY_VERSION))
+        ts = self.LONG_MAX if ts is None else ts
+        self.family_cells[family].append(
+            Cell(self.rowkey, family, ts=ts, cell_type=CellType.DELETE_FAMILY_VERSION)
+        )
         return self
 
-    # Delete all columns of the specified family with a timestamp less than or equal to the specified
     def add_family(self, family: bytes, ts: int = None):
-        self.family_cells[family].append(Cell(self.rowkey, family, ts=ts, cell_type=CellType.DELETE_FAMILY))
+        ts = self.LONG_MAX if ts is None else ts
+        self.family_cells[family].append(
+            Cell(self.rowkey, family, ts=ts, cell_type=CellType.DELETE_FAMILY)
+        )
         return self
+
+    def is_row_delete(self) -> bool:
+        return not self.family_cells

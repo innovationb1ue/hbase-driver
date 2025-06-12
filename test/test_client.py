@@ -1,4 +1,6 @@
 import random
+import time
+
 import pytest
 
 from hbasedriver.client.client import Client
@@ -102,7 +104,12 @@ def test_admin_disable_enable(admin, table_name):
 
 
 def test_admin_delete(admin, table_name):
-    admin.disable_table(table_name)
+    if not admin.table_exists(table_name):
+        admin.create_table(table_name)
+
+    if not admin.is_table_disabled(table_name):
+        admin.disable_table(table_name)
+
     admin.delete_table(table_name)
     assert not admin.table_exists(table_name)
 
@@ -120,8 +127,8 @@ def test_delete_column(table):
     rowkey = b"row2"
     table.put(Put(rowkey).add_column(b"cf1", b"qf2", b"val"))
     assert table.get(Get(rowkey).add_family(b"cf1")).get(b"cf1", b"qf2") == b"val"
-
-    table.delete(Delete(rowkey).add_column(b"cf1", b"qf2", ts=0))
+    time.sleep(0.5)
+    table.delete(Delete(rowkey).add_column(b"cf1", b"qf2"))
     assert table.get(Get(rowkey).add_family(b"cf1")) is None
 
 

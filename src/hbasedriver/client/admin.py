@@ -1,3 +1,5 @@
+import time
+
 from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableState
 
@@ -26,6 +28,7 @@ class Admin:
 
     def delete_table(self, table_name: TableName):
         self.master.delete_table(table_name.ns, table_name.tb)
+        time.sleep(1)
 
     def disable_table(self, table_name: TableName):
         self.master.disable_table(table_name.ns, table_name.tb)

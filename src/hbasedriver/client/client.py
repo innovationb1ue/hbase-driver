@@ -67,6 +67,7 @@ class Client:
 
         result = self.meta_conn.get(b"hbase:meta,,1", get)
 
+        # table does not exist.
         if result is None:
             return None
 
