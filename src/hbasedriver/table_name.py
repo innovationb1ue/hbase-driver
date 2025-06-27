@@ -1,7 +1,7 @@
 class TableName:
     def __init__(self, ns, tb):
-        self.ns = ns
-        self.tb = tb
+        self.ns: bytes = ns
+        self.tb: bytes = tb
 
     @staticmethod
     def value_of(ns, tb):

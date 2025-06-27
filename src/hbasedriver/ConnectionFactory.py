@@ -1,4 +1,4 @@
-from hbasedriver.ConnectionImplementation import ConnectionImplementation
+from hbasedriver.client.ConnectionImplementation import ConnectionImplementation
 from hbasedriver.user import User
 
 

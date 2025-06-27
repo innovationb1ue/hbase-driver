@@ -56,7 +56,8 @@ def test_scan():
         b'cf2', b'qf17777', b'666'))
     table.put(Put(b'scan_row_key3').add_column(b'cf1', b'qf1', b'666').add_column(b'cf2', b'qf16', b'6666').add_column(
         b'cf2', b'qf17777', b'666'))
-    resp = table.scan(Scan(b"scan_row_key1").add_family(b'cf1').add_family(b'cf2'))
+    scan = Scan(b"scan_row_key1").add_family(b'cf1').add_family(b'cf2')
+    resp = table.scan(scan)
     for i in resp:
         print(i)
 

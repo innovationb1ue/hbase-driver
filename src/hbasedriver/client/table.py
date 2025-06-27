@@ -49,7 +49,8 @@ class Table:
         conn = self.get_rs_connection(region)
         return conn.scan(region, scan)
 
-    def get_scanner(self, scan):
+    def get_scanner(self, scan: Scan):
+
         return ResultScanner()
 
     def get_rs_connection(self, region: Region):
