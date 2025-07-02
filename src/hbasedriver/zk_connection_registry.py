@@ -7,6 +7,7 @@ from kazoo.client import KazooClient
 from hbasedriver import hconstants
 from hbasedriver.hregion_location import HRegionLocation
 from hbasedriver.protobuf_py.ClusterStatus_pb2 import RegionState as RegionStateProto
+from hbasedriver.region_locations import RegionLocations
 from hbasedriver.znode_paths import ZNodePaths
 
 import logging
@@ -22,7 +23,7 @@ class ZKConnectionRegistry:
         self.zk = KazooClient(hosts=self.__build_zk_quorum_server_string(), timeout=3)
         self.zk.start(timeout=10)
 
-    def get_meta_region_locations(self):
+    def get_meta_region_locations(self) -> 'RegionLoations':
 
         locations: dict[int, HRegionLocation] = {}
 
@@ -49,7 +50,6 @@ class ZKConnectionRegistry:
             from hbasedriver.region_info import FIRST_META_REGIONINFO
             locations[replica_id] = HRegionLocation(FIRST_META_REGIONINFO, server_name, hconstants.NO_SEQNUM)
             break
-        from hbasedriver.region_locations import RegionLocations
         return RegionLocations(list(locations.values()))
 
     def __build_zk_quorum_server_string(self):
