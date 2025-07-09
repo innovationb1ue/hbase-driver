@@ -22,6 +22,7 @@ class Table:
         self.regions = {}
         # we might maintain connections to different regionserver.
         self.rs_conns: dict[(bytes, int), RsConnection] = {}
+        self.cluster_conn = None
 
     def put(self, put: Put):
         region: Region = self.locate_target_region(put.rowkey)
@@ -51,7 +52,7 @@ class Table:
 
     def get_scanner(self, scan: Scan):
 
-        return ResultScanner()
+        return ResultScanner(scan, self.cluster_conn)
 
     def get_rs_connection(self, region: Region):
         conn = self.rs_conns.get((region.host, region.port))

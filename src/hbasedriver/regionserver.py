@@ -1,3 +1,4 @@
+from hbasedriver.client.result_scanner import ResultScanner
 from hbasedriver.model import CellType
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get

@@ -6,10 +6,12 @@ from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
 
 
+# ref to ClientScanner.java
 class ResultScanner:
-    def __init__(self, scan: 'Scan', table_name, ):
+    def __init__(self, scan: 'Scan', table_name, cluster_connection):
         self.scanner_id = None
-        self.rs_conn = rs_conn
+        self.cluster_cnn = cluster_connection
+        self.table_name = table_name
         self.scan = scan
         # cache all the rows from last fetch.
         self.cache: list[Row] = []
