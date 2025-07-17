@@ -48,10 +48,24 @@ def table():
         except Exception:
             pass  # ignore if already disabled
         admin.delete_table(table_name)
-
     admin.create_table(table_name, column_families)
-
     return client.get_table(table_name.ns, table_name.tb)
+
+
+@pytest.fixture(scope='module', autouse=True)
+def cleanup():
+    yield
+    client = Client(["127.0.0.1"])
+    admin = client.get_admin()
+    table_name = TableName.value_of(b"", b"test_table")
+
+    # clean up by deleting the test table.
+    if admin.table_exists(table_name):
+        try:
+            admin.disable_table(table_name)
+        except Exception:
+            pass  # ignore if already disabled
+        admin.delete_table(table_name)
 
 
 def test_admin_create_and_check(admin):

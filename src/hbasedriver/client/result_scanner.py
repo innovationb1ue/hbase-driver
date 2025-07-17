@@ -3,7 +3,6 @@ from hbasedriver.operations import Scan
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column
 from hbasedriver.protobuf_py.Filter_pb2 import Filter
 from hbasedriver.region import Region
-from hbasedriver.regionserver import RsConnection
 
 
 # ref to ClientScanner.java
