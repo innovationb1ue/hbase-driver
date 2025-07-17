@@ -1,4 +1,5 @@
 from hbasedriver.protobuf_py.HBase_pb2 import RegionInfo
+from hbasedriver.util.bytes import to_string_binary
 
 
 class Region:
@@ -14,6 +15,9 @@ class Region:
         self.port = port
         self.region_info = region_info
         self.state = None
+
+    def __str__(self):
+        return "{},{},{}".format(self.host, self.port, to_string_binary(self.region_info.start_key))
 
     @staticmethod
     def from_cells(cells):
