@@ -118,8 +118,13 @@ def test_admin_disable_enable(admin, table_name):
 
 
 def test_admin_delete(admin, table_name):
+    # Define column families
+    cf1 = ColumnFamilyDescriptorBuilder(b"cf1").build()
+    cf2 = ColumnFamilyDescriptorBuilder(b"cf2").build()
+    column_families = [cf1, cf2]
+
     if not admin.table_exists(table_name):
-        admin.create_table(table_name)
+        admin.create_table(table_name, column_families)
 
     if not admin.is_table_disabled(table_name):
         admin.disable_table(table_name)
