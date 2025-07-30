@@ -11,10 +11,12 @@ from hbasedriver.operations.get import Get
 from hbasedriver.operations.delete import Delete
 from hbasedriver.table_name import TableName
 
+conf = {"hbase.zookeeper.quorum": "127.0.0.1"}
+
 
 @pytest.fixture(scope="module")
 def admin():
-    client = Client(["127.0.0.1"])
+    client = Client(conf)
     return client.get_admin()
 
 
@@ -32,7 +34,7 @@ def column_families():
 
 @pytest.fixture(scope="module")
 def table():
-    client = Client(["127.0.0.1"])
+    client = Client(conf)
     admin = client.get_admin()
     table_name = TableName.value_of(b"", b"test_table")
 
@@ -55,7 +57,7 @@ def table():
 @pytest.fixture(scope='module', autouse=True)
 def cleanup():
     yield
-    client = Client(["127.0.0.1"])
+    client = Client(conf)
     admin = client.get_admin()
     table_name = TableName.value_of(b"", b"test_table")
 

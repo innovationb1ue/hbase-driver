@@ -9,7 +9,7 @@ def test_example():
     conf["hbase.zookeeper.quorum"] = "127.0.0.1"
 
     # lets say your hbase instance runs on 127.0.0.1 (zk quorum address)
-    client = Client(["127.0.0.1"])
+    client = Client(conf)
 
     # Define column families
     cf1_builder = ColumnFamilyDescriptorBuilder(b"cf1")

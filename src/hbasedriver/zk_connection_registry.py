@@ -53,7 +53,7 @@ class ZKConnectionRegistry:
         return RegionLocations(list(locations.values()))
 
     def __build_zk_quorum_server_string(self):
-        hosts: list[str] = self.conf.get(hconstants.ZOOKEEPER_QUORUM, ["localhost"])
+        hosts: list[str] = self.conf.get(hconstants.ZOOKEEPER_QUORUM).split(",")
         port: int = int(self.conf.get(hconstants.ZOOKEEPER_CLIENT_PORT, 2181))
         res = ""
         first = True
