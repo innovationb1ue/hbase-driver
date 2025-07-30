@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 
-HB_VERSION="2.6.3"
+HB_VERSION="2.5.12"
 HB_DIR="hbase-$HB_VERSION"
 HB_TARBALL="$HB_DIR-bin.tar.gz"
 HB_SRC_TARBALL="$HB_DIR-src.tar.gz"
