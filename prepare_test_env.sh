@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 HB_VERSION="2.6.3"
 HB_DIR="hbase-$HB_VERSION"
