@@ -15,4 +15,8 @@
         <name>hbase.unsafe.stream.capability.enforce</name>
         <value>false</value>
     </property>
+    <property>
+        <name>hbase.regionserver.ipc.address</name>
+        <value>127.0.0.1</value>
+    </property>
 </configuration>
