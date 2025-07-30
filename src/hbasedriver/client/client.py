@@ -20,12 +20,12 @@ class Client:
     Provides access to Admin, Table, and region metadata.
     """
 
-    def __init__(self, zk_quorum: list[str]):
-        self.zk_quorum = zk_quorum
-        self.master_host, self.master_port = zk.locate_master(zk_quorum)
-        self.meta_host, self.meta_port = zk.locate_meta_region(zk_quorum)
+    def __init__(self, conf: dict):
+        self.zk_quorum = conf.get("hbase_zookeeper.quorum")
+        self.master_host, self.master_port = zk.locate_master(self.zk_quorum)
+        self.meta_host, self.meta_port = zk.locate_meta_region(self.zk_quorum)
 
-        self.cluster_connection = ClusterConnection({})
+        self.cluster_connection = ClusterConnection(conf)
 
         self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
         self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)

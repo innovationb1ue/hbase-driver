@@ -1,0 +1,18 @@
+<configuration>
+    <property>
+        <name>hbase.zookeeper.quorum</name>
+        <value>127.0.0.1</value>
+    </property>
+    <property>
+        <name>hbase.cluster.distributed</name>
+        <value>false</value>
+    </property>
+    <property>
+        <name>hbase.tmp.dir</name>
+        <value>./tmp</value>
+    </property>
+    <property>
+        <name>hbase.unsafe.stream.capability.enforce</name>
+        <value>false</value>
+    </property>
+</configuration>

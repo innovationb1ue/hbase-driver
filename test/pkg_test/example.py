@@ -6,7 +6,7 @@ def test_example():
     from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
 
     conf = dict()
-    conf[HConst]
+    conf["hbase.zookeeper.quorum"] = "127.0.0.1"
 
     # lets say your hbase instance runs on 127.0.0.1 (zk quorum address)
     client = Client(["127.0.0.1"])
