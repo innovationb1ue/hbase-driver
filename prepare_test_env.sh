@@ -15,6 +15,8 @@ tar -xzf "$HB_TARBALL"
 
 mv "$HB_DIR" hbase-bin
 
+cp -rf hbase-site.xml hbase-bin/conf/
+
 echo "3️⃣ Starting local HBase server..."
 (cd hbase-bin && ./bin/start-hbase.sh)
 
@@ -26,7 +28,7 @@ tar -xzf "$HB_SRC_TARBALL"
 
 pip install kazoo
 
-cp -rf hbase-site.xml hbase-bin/conf/
+
 
 echo "✅ Setup complete!"
 echo "You now have:"
