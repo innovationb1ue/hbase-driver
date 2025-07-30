@@ -21,6 +21,7 @@ class Client:
     """
 
     def __init__(self, conf: dict):
+        self.conf = conf
         self.zk_quorum = conf.get("hbase_zookeeper.quorum")
         self.master_host, self.master_port = zk.locate_master(self.zk_quorum)
         self.meta_host, self.meta_port = zk.locate_meta_region(self.zk_quorum)
@@ -34,7 +35,8 @@ class Client:
         return Admin(self)
 
     def get_table(self, ns: bytes | None, tb: bytes) -> Table:
-        return Table(self.zk_quorum, ns or b"default", tb)
+        
+        return Table(self.conf, ns or b"default", tb)
 
     def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]):
         time.sleep(1)

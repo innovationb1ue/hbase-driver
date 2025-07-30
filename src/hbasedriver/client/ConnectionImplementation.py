@@ -12,7 +12,7 @@ class ConnectionImplementation(ClusterConnection):
         self.user = user
         self.registry = ZKConnectionRegistry(conf)
 
-    def locate_region(self, table_name: TableName, row) -> RegionLocations:
+    def locate_region(self, table_name: TableName, row, use_cache=True) -> RegionLocations:
         if table_name.ns == b'hbase' and table_name.tb == b'meta':
             return self.locate_meta()
         else:

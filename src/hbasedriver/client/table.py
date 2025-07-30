@@ -14,10 +14,10 @@ class Table:
     This class contains data operations within a table.
     """
 
-    def __init__(self, zk_quorum, ns, tb):
+    def __init__(self, conf: dict, ns, tb):
         self.ns = ns
         self.tb = tb
-        self.meta_rs_host, self.meta_rs_port = locate_meta_region(zk_quorum)
+        self.meta_rs_host, self.meta_rs_port = locate_meta_region(conf.get("hbase.zookeeper.quorum"))
         # cache metadata for regions that we touched.
         self.regions = {}
         # we might maintain connections to different regionserver.
