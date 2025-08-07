@@ -20,7 +20,3 @@ class ConnectionImplementation(ClusterConnection):
 
     def locate_meta(self) -> RegionLocations:
         return self.registry.get_meta_region_locations()
-
-    def locate_region_in_meta(self) -> RegionLocations:
-        #
-        return self.registry.get_meta_region_locations()

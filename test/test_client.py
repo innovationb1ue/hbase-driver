@@ -32,16 +32,19 @@ def column_families():
     return [cf1, cf2]
 
 
+def create_default_test_table(admin):
+    # Define column families
+    cf1 = ColumnFamilyDescriptorBuilder(b"cf1").build()
+    cf2 = ColumnFamilyDescriptorBuilder(b"cf2").build()
+    column_families = [cf1, cf2]
+    admin.create_table(TableName.value_of(b"", b"test_table"), column_families)
+
+
 @pytest.fixture(scope="module")
 def table():
     client = Client(conf)
     admin = client.get_admin()
     table_name = TableName.value_of(b"", b"test_table")
-
-    # Define column families
-    cf1 = ColumnFamilyDescriptorBuilder(b"cf1").build()
-    cf2 = ColumnFamilyDescriptorBuilder(b"cf2").build()
-    column_families = [cf1, cf2]
 
     # Ensure a clean test table
     if admin.table_exists(table_name):
@@ -50,7 +53,8 @@ def table():
         except Exception:
             pass  # ignore if already disabled
         admin.delete_table(table_name)
-    admin.create_table(table_name, column_families)
+
+    create_default_test_table(admin)
     return client.get_table(table_name.ns, table_name.tb)
 
 
@@ -104,6 +108,8 @@ def test_admin_create_and_check(admin):
 
 def test_admin_disable_enable(admin, table_name):
     # Ensure table starts in enabled state
+    if not admin.table_exists(table_name):
+        create_default_test_table(admin)
     if not admin.is_table_enabled(table_name):
         try:
             admin.enable_table(table_name)
@@ -133,6 +139,9 @@ def test_admin_delete(admin, table_name):
 
     admin.delete_table(table_name)
     assert not admin.table_exists(table_name)
+
+    # add the test table back since other tests might use it.
+    create_default_test_table(admin)
 
 
 def test_put_and_get(table):

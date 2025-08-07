@@ -40,11 +40,11 @@ class Admin:
 
     def is_table_disabled(self, table_name: TableName) -> bool:
         state = self.client.get_table_state(table_name.ns, table_name.tb)
-        return state.state == TableState.DISABLED
+        return state is not None and state.state == TableState.DISABLED
 
     def is_table_enabled(self, table_name: TableName) -> bool:
         state = self.client.get_table_state(table_name.ns, table_name.tb)
-        return state.state == TableState.ENABLED
+        return state is not None and state.state == TableState.ENABLED
 
     def describe_table(self, table_name: TableName):
         return self.master.describe_table(table_name.ns, table_name.tb)
