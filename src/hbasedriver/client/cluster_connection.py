@@ -18,7 +18,6 @@ class ClusterConnection(ABC):
         if table_name is None or len(table_name.tb) == 0:
             raise Exception("table name cannot be null or zero length")
         if table_name == TableName.META_TABLE_NAME:
-            # todo: add a cache for meta location here.
             if use_cache and self.meta_locations is not None:
                 return self.meta_locations
             self.meta_locations = self.registry.get_meta_region_locations()
