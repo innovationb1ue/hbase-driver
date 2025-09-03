@@ -59,5 +59,9 @@ class ResultScanner:
             raise StopIteration
         return rows
 
+    def load_cache(self):
+        if self.closed:
+            return
+
     def __iter__(self):
         return self
