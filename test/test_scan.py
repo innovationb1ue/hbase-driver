@@ -81,8 +81,7 @@ def cleanup():
         admin.delete_table(table_name)
 
 
-def test_scan(client):
-    table = client.get_table(b"", b"test_table")
+def test_scan(table):
     table.put(Put(b'scan_row_key1').add_column(b'cf1', b'qf1', b'666').add_column(b'cf2', b'qf16', b'6666').add_column(
         b'cf2', b'qf17777', b'666'))
     table.put(Put(b'scan_row_key2').add_column(b'cf1', b'qf1', b'666').add_column(b'cf2', b'qf16', b'6666').add_column(

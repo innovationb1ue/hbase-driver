@@ -5,6 +5,7 @@ from hbasedriver.operations.get import Get
 from hbasedriver.operations.scan import Scan
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
+from hbasedriver.table_name import TableName
 from hbasedriver.zk import locate_meta_region
 from hbasedriver.operations.put import Put
 
@@ -51,8 +52,7 @@ class Table:
         return conn.scan(region, scan)
 
     def get_scanner(self, scan: Scan):
-
-        return ResultScanner(scan, self.cluster_conn)
+        return ResultScanner(scan, TableName.value_of(self.ns, self.tb), self.cluster_conn)
 
     def get_rs_connection(self, region: Region):
         conn = self.rs_conns.get((region.host, region.port))

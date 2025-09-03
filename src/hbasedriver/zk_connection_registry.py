@@ -31,7 +31,7 @@ class ZKConnectionRegistry:
         for path in paths:
             if not self.znode_paths.is_meta_znode_prefix(path):
                 continue
-            # todo: adapt for replicated hbase cluster
+
             replica_id_str = path[len(self.znode_paths.metaZNodePrefix):]
             if not replica_id_str:
                 replica_id = 0

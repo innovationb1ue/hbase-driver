@@ -1,4 +1,5 @@
 from hbasedriver.exceptions.RemoteException import RemoteException
+from hbasedriver.exceptions.TableExceptions import TableNotFoundException
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
@@ -7,6 +8,8 @@ from hbasedriver.regionserver import RsConnection
 # encapsule the interaction with meta region server.
 class MetaRsConnection(RsConnection):
     # locate the region with given rowkey and table name. (must be called on rs with meta region)
+
+    # todo: make this return HRegionLocation
     def locate_region(self, ns, tb, rowkey) -> Region:
         rq = ScanRequest()
         if not ns or ns == b"default":
@@ -27,5 +30,8 @@ class MetaRsConnection(RsConnection):
         rq.region.value = "hbase:meta,,1".encode('utf-8')
         scan_resp: ScanResponse = self.send_request(rq, "Scan")
         if len(scan_resp.results) == 0:
-            raise RemoteException("Table not found {}.{}".format(ns, tb))
-        return Region.from_cells(scan_resp.results[0].cell)
+            raise TableNotFoundException("Table not found {}.{}".format(ns.decode(), tb.decode()))
+        regioninfo = Region.from_cells(scan_resp.results[0].cell)
+        if regioninfo.region_info.table_name.namespace != ns or regioninfo.region_info.table_name.qualifier != tb:
+            raise TableNotFoundException("Table not found {}.{}".format(ns.decode(), tb.decode()))
+        return regioninfo
