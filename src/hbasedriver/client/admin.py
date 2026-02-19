@@ -66,6 +66,18 @@ class Admin:
     def list_tables(self, pattern: str = ".*", include_sys_tables: bool = False):
         return self.master.list_table_descriptors(pattern, include_sys_tables)
 
+    def create_namespace(self, namespace):
+        """Create a namespace (accepts bytes or str)."""
+        return self.master.create_namespace(namespace)
+
+    def delete_namespace(self, namespace):
+        """Delete a namespace (accepts bytes or str)."""
+        return self.master.delete_namespace(namespace)
+
+    def list_namespaces(self) -> list:
+        """List namespaces; returns list of namespace names (strings)."""
+        return self.master.list_namespaces()
+
     def close(self):
         # Optional cleanup logic
         pass

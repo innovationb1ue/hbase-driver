@@ -7,7 +7,11 @@ from hbasedriver.protobuf_py.Master_pb2 import (
     DisableTableRequest,
     EnableTableRequest,
     GetTableDescriptorsRequest,
-    GetTableDescriptorsResponse
+    GetTableDescriptorsResponse,
+    CreateNamespaceRequest,
+    DeleteNamespaceRequest,
+    ListNamespacesRequest,
+    ListNamespacesResponse
 )
 from hbasedriver.Connection import Connection
 
@@ -59,3 +63,32 @@ class MasterConnection(Connection):
         rq.regex = pattern
         rq.include_sys_tables = include_sys_table
         return self.send_request(rq, "GetTableDescriptors")
+
+    def create_namespace(self, namespace):
+        """Create a namespace. Accepts bytes or str."""
+        if isinstance(namespace, bytes):
+            ns_bytes = namespace
+        else:
+            ns_bytes = str(namespace).encode('utf-8')
+        rq = CreateNamespaceRequest()
+        # NamespaceDescriptor.name is a bytes field in HBase proto
+        rq.namespaceDescriptor.name = ns_bytes
+        self.send_request(rq, "CreateNamespace")
+
+    def delete_namespace(self, namespace):
+        """Delete a namespace. Accepts bytes or str."""
+        if isinstance(namespace, bytes):
+            ns_str = namespace.decode('utf-8')
+        else:
+            ns_str = str(namespace)
+        rq = DeleteNamespaceRequest()
+        rq.namespaceName = ns_str
+        self.send_request(rq, "DeleteNamespace")
+
+    def list_namespaces(self) -> list:
+        """Return a list of namespace names (strings)."""
+        rq = ListNamespacesRequest()
+        resp = self.send_request(rq, "ListNamespaces")
+        if resp is None:
+            return []
+        return list(resp.namespaceName)
