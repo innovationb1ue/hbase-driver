@@ -8,6 +8,7 @@ from hbasedriver.protobuf_py.Master_pb2 import (
     EnableTableRequest,
     GetTableDescriptorsRequest,
     GetTableDescriptorsResponse,
+    TruncateTableRequest,
     CreateNamespaceRequest,
     DeleteNamespaceRequest,
     ListNamespacesRequest,
@@ -92,3 +93,12 @@ class MasterConnection(Connection):
         if resp is None:
             return []
         return list(resp.namespaceName)
+
+    def truncate_table(self, namespace: bytes, table: bytes, preserve_splits: bool = False):
+        """Truncate a table. preserve_splits decides whether to keep split points."""
+        rq = TruncateTableRequest()
+        rq.tableName.namespace = namespace or b'default'
+        rq.tableName.qualifier = table
+        rq.preserveSplits = bool(preserve_splits)
+        # The master will schedule a procedure; no detailed response parsing here.
+        self.send_request(rq, "truncateTable")
