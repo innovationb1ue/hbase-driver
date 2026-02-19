@@ -37,14 +37,17 @@ class Client:
 
     def get_table(self, ns: bytes | None, tb: bytes) -> Table:
 
-        return Table(self.conf, ns or b"default", tb)
+        table = Table(self.conf, ns or b"default", tb)
+        # attach cluster connection so Table can locate regions via the cluster
+        table.cluster_conn = self.cluster_connection
+        return table
 
     def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]):
         time.sleep(1)
         attempts = 0
         expected = len(split_keys) or 1  # At least 1 region
 
-        while attempts < 10:
+        while attempts < 30:
             region_states = self.get_region_states(ns, tb)
             online = sum(1 for state in region_states.values() if state == "OPEN")
             if online >= expected:
@@ -130,7 +133,7 @@ class Client:
 
         return region_states
 
-    def get_region_in_state_count(self, ns: bytes, tb: bytes, target_state: str, timeout=10):
+    def get_region_in_state_count(self, ns: bytes, tb: bytes, target_state: str, timeout=60):
         start = time.time()
         while True:
             states = self.get_region_states(ns, tb)
@@ -143,6 +146,22 @@ class Client:
 
     def describe_table(self, ns: bytes, tb: bytes):
         return self.master_conn.describe_table(ns, tb)
+
+    def create_table(self, ns: bytes, tb: bytes, column_families, split_keys: list[bytes] = None):
+        tn = TableName.value_of(ns or b"", tb)
+        return self.get_admin().create_table(tn, column_families, split_keys)
+
+    def delete_table(self, ns: bytes, tb: bytes):
+        tn = TableName.value_of(ns or b"", tb)
+        return self.get_admin().delete_table(tn)
+
+    def disable_table(self, ns: bytes, tb: bytes):
+        tn = TableName.value_of(ns or b"", tb)
+        return self.get_admin().disable_table(tn)
+
+    def enable_table(self, ns: bytes, tb: bytes):
+        tn = TableName.value_of(ns or b"", tb)
+        return self.get_admin().enable_table(tn)
 
     def locate_region(self, table_name: TableName, row: bytes):
         if table_name == TableName.META_TABLE_NAME:

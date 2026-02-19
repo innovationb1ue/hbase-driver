@@ -21,20 +21,31 @@ class Region:
 
     @staticmethod
     def from_cells(cells):
-        row, host, port, region_info = None, None, None, None
+        row = None
+        host = None
+        port = None
+        region_info = None
         for c in cells:
             qf = c.qualifier
+            # record row from any cell
+            row = c.row
             if qf == b"server":
                 value = c.value
-                row = c.row
-                host, port = value.split(b":")
+                try:
+                    host, port = value.split(b":", 1)
+                except Exception:
+                    host = value
+                    port = b""
             elif qf == b"regioninfo":
                 region_info = RegionInfo()
                 region_info.ParseFromString(c.value[4:])  # skip PBUF
 
-        assert host
-        assert port
-        assert region_info
+        if region_info is None:
+            raise AssertionError("missing regioninfo in meta cells")
+
+        # host/port may be absent during transitions; default to empty bytes
+        host = host or b""
+        port = port or b""
 
         return Region(row, host, port, region_info)
 

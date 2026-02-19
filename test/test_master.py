@@ -7,7 +7,9 @@ from hbasedriver.exceptions.RemoteException import TableExistsException
 from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
 from src.hbasedriver.master import MasterConnection
 
-host = "127.0.0.1"
+import os
+HBASE_ZK = os.getenv("HBASE_ZK", "127.0.0.1:2181")
+host = HBASE_ZK.split(':')[0]
 port = 16000
 ms_test_table = b'test_table_master'
 order_idx = 0
@@ -18,7 +20,7 @@ order_idx += 1
 
 # before all test in this file: drop table first.
 try:
-    client = Client([host])
+    client = Client({"hbase.zookeeper.quorum": HBASE_ZK})
     client.disable_table(b'', ms_test_table)
     client.delete_table(b'', ms_test_table)
 except:
@@ -78,7 +80,7 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_disable_table():
-    client = Client([host])
+    client = Client({"hbase.zookeeper.quorum": HBASE_ZK})
     client.disable_table(b'', b"test_table_master")
     client.enable_table(b'', b"test_table_master")
     client.disable_table(b'', b"test_table_master")
@@ -90,5 +92,5 @@ order_idx += 1
 
 @pytest.mark.order(order_idx)
 def test_delete_table():
-    client = Client([host])
+    client = Client({"hbase.zookeeper.quorum": HBASE_ZK})
     client.delete_table(b'', b"test_table_master")

@@ -30,13 +30,27 @@ class Admin:
         self.master.delete_table(table_name.ns, table_name.tb)
         time.sleep(1)
 
-    def disable_table(self, table_name: TableName):
+    def disable_table(self, table_name: TableName, timeout: int = 60):
         self.master.disable_table(table_name.ns, table_name.tb)
-        self.client.get_region_in_state_count(table_name.ns, table_name.tb, "CLOSED")
+        # Wait for the logical table state to become DISABLED; regions may take longer to report CLOSED.
+        start = time.time()
+        while time.time() - start < timeout:
+            state = self.client.get_table_state(table_name.ns, table_name.tb)
+            if state is not None and state.state == TableState.DISABLED:
+                return
+            time.sleep(1)
+        raise TimeoutError("Timeout waiting for table to become DISABLED")
 
-    def enable_table(self, table_name: TableName):
+    def enable_table(self, table_name: TableName, timeout: int = 60):
         self.master.enable_table(table_name.ns, table_name.tb)
-        self.client.get_region_in_state_count(table_name.ns, table_name.tb, "OPEN")
+        # Wait for logical table state to be ENABLED
+        start = time.time()
+        while time.time() - start < timeout:
+            state = self.client.get_table_state(table_name.ns, table_name.tb)
+            if state is not None and state.state == TableState.ENABLED:
+                return
+            time.sleep(1)
+        raise TimeoutError("Timeout waiting for table to become ENABLED")
 
     def is_table_disabled(self, table_name: TableName) -> bool:
         state = self.client.get_table_state(table_name.ns, table_name.tb)

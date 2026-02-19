@@ -11,7 +11,8 @@ table_name = TableName.value_of(b"", b"test_cluster_connection_table")
 
 @pytest.fixture(scope="module")
 def table():
-    client = Client(["127.0.0.1"])
+    import os
+    client = Client({"hbase.zookeeper.quorum": os.getenv("HBASE_ZK", "127.0.0.1")})
     admin = client.get_admin()
     table_name = TableName.value_of(b"", b"test_cluster_connection_table")
 
@@ -34,7 +35,8 @@ def table():
 @pytest.fixture(scope='module', autouse=True)
 def cleanup():
     yield
-    client = Client(["127.0.0.1"])
+    import os
+    client = Client({"hbase.zookeeper.quorum": os.getenv("HBASE_ZK", "127.0.0.1")})
     admin = client.get_admin()
     table_name = TableName.value_of(b"", b"test_cluster_connection_table")
 
@@ -48,14 +50,16 @@ def cleanup():
 
 
 def test_zk_registry():
-    conf = {"hbase.zookeeper.quorum": ["127.0.0.1"]}
+    import os
+    conf = {"hbase.zookeeper.quorum": os.getenv("HBASE_ZK", "127.0.0.1")}
     conn = ConnectionImplementation(conf)
     res = conn.locate_meta()
     print(res)
 
 
-def test_cluster_locate_key_in_meta():
-    conf = {"hbase.zookeeper.quorum": ["127.0.0.1"]}
+def test_cluster_locate_key_in_meta(table):
+    import os
+    conf = {"hbase.zookeeper.quorum": os.getenv("HBASE_ZK", "127.0.0.1")}
     conn = ClusterConnection(conf)
 
     s = conn.locate_region_in_meta(table_name, b'row1')

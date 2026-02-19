@@ -47,9 +47,8 @@ class Table:
         return conn.delete(region, delete)
 
     def scan(self, scan: Scan):
-        region: Region = self.locate_target_region(scan.start_row)
-        conn = self.get_rs_connection(region)
-        return conn.scan(region, scan)
+        # Use cluster-level scanner which will locate regions and iterate across them
+        return self.get_scanner(scan)
 
     def get_scanner(self, scan: Scan):
         return ResultScanner(scan, TableName.value_of(self.ns, self.tb), self.cluster_conn)
