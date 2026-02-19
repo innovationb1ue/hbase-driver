@@ -1,4 +1,4 @@
-from hbasedriver.client.result_scanner import ResultScanner
+# deferred import of ResultScanner inside scan() to avoid circular import
 from hbasedriver.model import CellType
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
@@ -147,6 +147,7 @@ class RsConnection(Connection):
         resp: ScanResponse = self.send_request(rq, 'Scan')
         scanner_id = resp.scanner_id
         # build an iterator to let client iterate through the result set.
+        from hbasedriver.client.result_scanner import ResultScanner
         return ResultScanner(scanner_id, scan, self)
 
     # todo: impl this like the java code.
