@@ -1,0 +1,33 @@
+version: "3.8"
+
+services:
+  zookeeper:
+    image: zookeeper:3.7
+    container_name: hbase_zookeeper
+    ports:
+      - "2181:2181"
+
+  hbase:
+    image: harisekhon/hbase:2.4
+    container_name: hbase_server
+    depends_on:
+      - zookeeper
+    environment:
+      - ZOOKEEPER_QUORUM=zookeeper
+    ports:
+      - "16010:16010"
+      - "16000:16000"
+
+  dev:
+    build:
+      context: .
+      dockerfile: docker/Dockerfile
+    container_name: hbase_dev
+    volumes:
+      - ./:/workspace
+    working_dir: /workspace
+    depends_on:
+      - hbase
+    tty: true
+    stdin_open: true
+    command: bash
