@@ -62,9 +62,26 @@ class Table:
 
     def locate_target_region(self, rowkey) -> Region:
         # check cached regions first, return if we already touched that region.
-        for region in self.regions.values():
+        # Validate cached entries against meta to avoid using stale encoded region names
+        # that can occur after delete+create (e.g., truncate fallback).
+        for region in list(self.regions.values()):
             if region.key_in_region(rowkey):
-                return region
+                try:
+                    meta_conn = MetaRsConnection().connect(self.meta_rs_host, self.meta_rs_port)
+                    fresh = meta_conn.locate_region(self.ns, self.tb, rowkey)
+                    # If the encoded name matches, cached entry is still valid
+                    if fresh.get_region_name() == region.get_region_name():
+                        return region
+                    # Otherwise replace stale cache with fresh region info
+                    self.regions[fresh.region_info.region_id] = fresh
+                    try:
+                        del self.regions[region.region_info.region_id]
+                    except Exception:
+                        pass
+                    return fresh
+                except Exception:
+                    # If meta lookup fails, fall back to cached region to avoid breaking callers.
+                    return region
 
         conn = MetaRsConnection().connect(self.meta_rs_host, self.meta_rs_port)
         region = conn.locate_region(self.ns, self.tb, rowkey)
