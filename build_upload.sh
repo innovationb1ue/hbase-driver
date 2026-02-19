@@ -6,6 +6,14 @@ set -euo pipefail
 REPO=${1:-test}
 DO_INSTALL=${2:-}
 
+# Ensure packaging tools are recent enough to parse modern metadata (METADATA 2.4)
+# This will upgrade build/twine/packaging in the active Python environment.
+# If you prefer to manage these manually in CI, set NO_UPGRADE=1 to skip.
+if [ -z "${NO_UPGRADE-}" ]; then
+  echo "Ensuring latest packaging tools (pip, setuptools, wheel, packaging, twine, build)..."
+  python3 -m pip install --upgrade pip setuptools wheel packaging twine build
+fi
+
 echo "Building distributions..."
 rm -rf ./dist/*
 python3 -m build
@@ -36,6 +44,10 @@ if [ -n "${TWINE_API_TOKEN-}" ]; then
     export TWINE_USERNAME="__token__"
     export TWINE_PASSWORD="${TWINE_API_TOKEN}"
 fi
+
+echo "Validating distributions with twine check..."
+python3 -m twine check dist/*
+
 
 echo "Uploading to $REPO..."
 python3 -m twine upload --repository-url "$REPO_URL" dist/*
