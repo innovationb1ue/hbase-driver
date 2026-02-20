@@ -23,17 +23,50 @@ echo "Waiting for HBase master (http://localhost:16010) up to 240s..."
 MAX_WAIT=240
 WAITED=0
 SLEEP=2
+
+# Get container id for hbase service (if available)
+HBASE_CID=$($COMPOSE ps -q hbase 2>/dev/null || true)
+if [ -z "$HBASE_CID" ]; then
+  # fallback to container name if compose ps didn't return an id
+  HBASE_CID=$(docker ps --filter "name=hbase_server" --format '{{.ID}}' || true)
+fi
+
 while [ $WAITED -lt $MAX_WAIT ]; do
+  # 1) try host localhost
   if curl -fsS http://localhost:16010 >/dev/null 2>&1; then
-    echo "HBase master is up."
+    echo "HBase master is up at http://localhost:16010"
     break
   fi
+
+  # 2) try mapped host port if container is present
+  if [ -n "$HBASE_CID" ]; then
+    HOST_PORT=$(docker port "$HBASE_CID" 16010/tcp 2>/dev/null | sed -n 's/.*:\([0-9]*\)$/\1/p' || true)
+    if [ -n "$HOST_PORT" ]; then
+      if curl -fsS "http://localhost:$HOST_PORT" >/dev/null 2>&1; then
+        echo "HBase master is up at http://localhost:$HOST_PORT (mapped port)"
+        break
+      fi
+    fi
+
+    # 3) try container internal IP
+    CONTAINER_IP=$(docker inspect -f '{{range .NetworkSettings.Networks}}{{.IPAddress}}{{end}}' "$HBASE_CID" 2>/dev/null || true)
+    if [ -n "$CONTAINER_IP" ]; then
+      if curl -fsS "http://$CONTAINER_IP:16010" >/dev/null 2>&1; then
+        echo "HBase master is up at http://$CONTAINER_IP:16010 (container IP)"
+        break
+      fi
+    fi
+  fi
+
   sleep $SLEEP
   WAITED=$((WAITED+SLEEP))
 done
+
 if [ $WAITED -ge $MAX_WAIT ]; then
   echo "Timed out waiting for HBase master on 16010" >&2
-  $COMPOSE logs --tail=200 hbase
+  echo "Compose status:" >&2
+  $COMPOSE ps || true
+  $COMPOSE logs --tail=200 hbase || true
   exit 1
 fi
 
