@@ -21,25 +21,31 @@ Quickstart (Docker dev environment)
 
 Prerequisites: Docker and docker-compose installed.
 
-1. Start the development stack (zookeeper, hbase, dev container):
+1. Start the development stack (HBase with embedded ZooKeeper, dev container):
 
    ```bash
-   docker-compose up --build -d
+   ./scripts/run_tests_docker.sh
    ```
 
-   The dev service is defined in docker-compose.yml and mounts the repository so your local code is used inside the container.
+   This starts HBase and runs the integration tests. The script automatically:
+   - Builds Docker images
+   - Starts HBase (2.6.1 with embedded ZK)
+   - Waits for HBase to be ready
+   - Runs pytest
 
-2. Open a shell in the dev container (the entrypoint installs the local package in editable mode):
+2. For subsequent test runs (faster, skips build and HBase restart):
 
    ```bash
-   docker-compose exec dev bash
+   ./scripts/run_tests_docker.sh --no-start --no-build
    ```
 
-3. Run the integration tests (they run against the local HBase instance started by compose):
+3. Run a specific test:
 
    ```bash
-   pytest -q
+   ./scripts/run_tests_docker.sh test/test_zk.py::test_locate_meta
    ```
+
+See [TEST_GUIDE.md](TEST_GUIDE.md) for complete testing documentation and examples.
 
 Local development without Docker
 
@@ -94,10 +100,14 @@ Notes and gotchas
 
 Files of interest
 
-- docker-compose.yml — brings up zookeeper, hbase, and the dev service used for running integration tests.
-- docker/Dockerfile & docker/entrypoint.sh — build and configure the dev image that mounts the repository and installs it in editable mode.
-- build_upload.sh — build and upload helper for TestPyPI / PyPI.
-- pyproject.toml / setup.py — packaging metadata and dependencies (including protobuf).
+- scripts/run_tests_docker.sh — main test orchestration script (handles build, startup, wait, and pytest execution)
+- docker-compose.yml — defines HBase (with embedded ZK) and dev service
+- docker/hbase/Dockerfile — custom HBase 2.6.1 image with embedded ZooKeeper
+- docker/Dockerfile — dev container image with Python, pytest, and project dependencies
+- docker/entrypoint.sh — entry point for dev container
+- build_upload.sh — build and upload helper for TestPyPI / PyPI
+- pyproject.toml / setup.py — packaging metadata and dependencies (including protobuf)
+- TEST_GUIDE.md — comprehensive testing documentation
 - src/hbasedriver/ — driver implementation (client, admin wrappers, protobuf bindings, utilities).
 - test/ — integration tests that run against the containerized HBase instance.
 
