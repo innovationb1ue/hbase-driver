@@ -102,6 +102,25 @@ docker-compose logs hbase
 docker-compose logs hbase_dev
 ```
 
+### Clean Up Orphan Containers and Data
+If you have old containers or volumes from a previous setup, use the cleanup utility:
+
+```bash
+# Remove only containers
+./scripts/cleanup.sh
+
+# Remove containers and volumes (fresh HBase data)
+./scripts/cleanup.sh --volumes
+
+# Remove containers, volumes, and Docker images (full cleanup)
+./scripts/cleanup.sh --all
+
+# Get cleanup help
+./scripts/cleanup.sh --help
+```
+
+The test script automatically cleans up orphan containers before starting, but you can use this manually if needed.
+
 ### Stop Containers
 ```bash
 docker-compose down
@@ -125,7 +144,7 @@ HBASE_ZK="my-zk:2181" ./scripts/run_tests_docker.sh
 ## Troubleshooting
 
 ### Tests Fail on First Run
-The HBase container may take 30-60 seconds to fully initialize. The script includes waits for HTTP and ZK readiness. If tests still fail:
+The HBase container may take 30-60 seconds to fully initialize. The script includes waits for HTTP endpoint, znodes, and meta region readiness. If tests still fail:
 
 ```bash
 # Check HBase logs
@@ -136,13 +155,22 @@ docker exec hbase_dev python -c "from kazoo.client import KazooClient; z=KazooCl
 ```
 
 ### Container Won't Start
-```bash
-# Remove old containers and volumes
-docker-compose down -v
+If containers won't start or you get "connection refused" errors:
 
-# Restart fresh
+```bash
+# Full cleanup of orphan containers and volumes
+./scripts/cleanup.sh --volumes
+
+# Start fresh
 ./scripts/run_tests_docker.sh
 ```
+
+### Socket Errors During Tests
+If you see "cant read enough data when receiving response" errors:
+
+1. This usually means old containers from a previous setup are interfering
+2. Run: `./scripts/cleanup.sh --all` to remove everything
+3. Then: `./scripts/run_tests_docker.sh` to start fresh
 
 ### Port Already in Use
 If ports 16010, 16000, 16020, 16030, or 2181 are already in use, modify `docker-compose.yml`:
