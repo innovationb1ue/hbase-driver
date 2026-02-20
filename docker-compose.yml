@@ -7,9 +7,9 @@ services:
     ports:
       - "2181:2181"
 
-  hbase:
+  hbase-master:
     image: harisekhon/hbase
-    container_name: hbase_server
+    container_name: hbase_master
     depends_on:
       - zookeeper
     environment:
@@ -17,6 +17,35 @@ services:
     ports:
       - "16010:16010"
       - "16000:16000"
+    command: master
+
+  hbase-regionserver:
+    image: harisekhon/hbase
+    container_name: hbase_regionserver
+    depends_on:
+      - hbase-master
+      - zookeeper
+    environment:
+      - ZOOKEEPER_QUORUM=zookeeper
+    command: regionserver
+
+  hbase-rest:
+    image: harisekhon/hbase
+    container_name: hbase_rest
+    depends_on:
+      - hbase-master
+    environment:
+      - ZOOKEEPER_QUORUM=zookeeper
+    command: rest
+
+  hbase-thrift:
+    image: harisekhon/hbase
+    container_name: hbase_thrift
+    depends_on:
+      - hbase-master
+    environment:
+      - ZOOKEEPER_QUORUM=zookeeper
+    command: thrift
 
   dev:
     build:
