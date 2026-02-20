@@ -88,6 +88,24 @@ fi
 
 # Run pytest inside dev container
 echo "Running pytest inside ${DEV_NAME}..."
+
+# Ensure pytest is available inside the dev container; if not, rebuild dev image and recreate container
+if docker exec -u root ${DEV_NAME} bash -lc 'command -v pytest >/dev/null 2>&1' >/dev/null 2>&1; then
+  echo "pytest found in ${DEV_NAME}"
+else
+  echo "pytest not found in ${DEV_NAME}, rebuilding dev image and recreating container..."
+  # try to build without cache first, fallback to normal build
+  $COMPOSE build --no-cache dev || $COMPOSE build dev || true
+  # force recreate to ensure new image is used
+  $COMPOSE up -d --force-recreate dev || $COMPOSE up -d dev || true
+  sleep 2
+  if ! docker exec -u root ${DEV_NAME} bash -lc 'command -v pytest >/dev/null 2>&1' >/dev/null 2>&1; then
+    echo "pytest still missing in ${DEV_NAME} after rebuild; printing container info and exiting." >&2
+    docker exec -u root ${DEV_NAME} bash -lc 'echo PATH=$PATH; ls -l /usr/local/bin | sed -n "1,200p" || true' >&2 || true
+    exit 1
+  fi
+fi
+
 if [ $# -eq 0 ]; then
   docker exec -u root -i ${DEV_NAME} pytest -q
 else
