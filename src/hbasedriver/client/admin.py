@@ -4,6 +4,27 @@ from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableState
 
 
+def _retry_on_master_initializing(func, max_retries=30, delay=1):
+    """
+    Wrapper that retries a function call if Master returns "is initializing" error.
+    Useful during HBase startup when Master is still completing initialization.
+    """
+    last_error = None
+    for attempt in range(max_retries):
+        try:
+            return func()
+        except Exception as e:
+            error_msg = str(e)
+            if "Master is initializing" in error_msg or "Master is initializing" in str(type(e)):
+                last_error = e
+                if attempt < max_retries - 1:
+                    time.sleep(delay)
+                    continue
+            raise
+    if last_error:
+        raise last_error
+
+
 class Admin:
     """
     Admin operations for managing tables in HBase.
@@ -23,7 +44,9 @@ class Admin:
 
     def create_table(self, table_name: TableName, column_families: list[ColumnFamilySchema],
                      split_keys: list[bytes] = None):
-        self.master.create_table(table_name.ns, table_name.tb, column_families, split_keys)
+        _retry_on_master_initializing(
+            lambda: self.master.create_table(table_name.ns, table_name.tb, column_families, split_keys)
+        )
         self.client.check_regions_online(table_name.ns, table_name.tb, split_keys or [])
 
     def delete_table(self, table_name: TableName):

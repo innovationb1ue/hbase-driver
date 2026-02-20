@@ -87,21 +87,33 @@ def locate_master(zk_quorum: list, establish_connection_timeout=5, missing_znode
     if not zk:
         raise Exception("can not connect to zk via any contact point {}".format(zk_quorum))
 
-    # locate master
-    try:
-        rsp, stat = zk.get("/hbase/master")
-        first_byte, id_length = unpack(">cI", rsp[:5])
-        if first_byte != b'\xff':
-            # Malformed response
-            raise Exception(
-                "ZooKeeper returned an invalid response")
-        # skip bytes already read , id and an 8-byte long type salt.
-        rsp = rsp[5 + id_length:]
-        # skip PBUF
-        rsp = rsp[4:]
-        master = Master.FromString(rsp)
-        master_host = master.master.host_name
-        master_port = master.master.port
-        return master_host, master_port
-    except Exception:
-        raise
+    # locate master with retries
+    attempts = 0
+    while True:
+        try:
+            rsp, stat = zk.get("/hbase/master")
+            first_byte, id_length = unpack(">cI", rsp[:5])
+            if first_byte != b'\xff':
+                # Malformed response
+                raise Exception(
+                    "ZooKeeper returned an invalid response")
+            # skip bytes already read , id and an 8-byte long type salt.
+            rsp = rsp[5 + id_length:]
+            # skip PBUF
+            rsp = rsp[4:]
+            master = Master.FromString(rsp)
+            master_host = master.master.host_name
+            master_port = master.master.port
+            zk.stop()
+            return master_host, master_port
+        except NoNodeError:
+            attempts += 1
+            if attempts > missing_znode_retries:
+                logger.error("cant locate master, zk has no such node after retries.")
+                raise Exception("zk locate master failed")
+            logger.info("/hbase/master znode missing, retrying (%d/%d)", attempts, missing_znode_retries)
+            import time
+            time.sleep(1)
+        except Exception:
+            zk.stop()
+            raise
