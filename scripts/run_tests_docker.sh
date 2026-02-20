@@ -58,6 +58,15 @@ while [ $WAITED -lt $MAX_WAIT ]; do
     fi
   fi
 
+  # 4) detect master abort via master logs (fail fast if master died)
+  if [ -n "$HBASE_CID" ]; then
+    if docker exec "$HBASE_CID" bash -lc 'grep -q -E "Master server abort|ABORTING master|SessionExpiredException|KeeperException" /hbase/logs/hbase--master-*.log 2>/dev/null' >/dev/null 2>&1; then
+      echo "HBase Master appears to have aborted; printing recent master logs:" >&2
+      docker exec "$HBASE_CID" bash -lc 'tail -n 200 /hbase/logs/hbase--master-*.log 2>/dev/null || true' >&2 || true
+      exit 1
+    fi
+  fi
+
   sleep $SLEEP
   WAITED=$((WAITED+SLEEP))
 done
