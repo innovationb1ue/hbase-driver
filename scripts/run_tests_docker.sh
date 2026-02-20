@@ -86,6 +86,45 @@ if ! docker ps --format '{{.Names}}' | grep -q "^${DEV_NAME}$"; then
   $COMPOSE up -d dev
 fi
 
+# After HBase HTTP is reachable, wait for the ZooKeeper znode /hbase/master to appear (so tests can locate master)
+# Use the dev container's python + kazoo to query zk via the docker network host 'zookeeper' or overridden HBASE_ZK
+echo "Waiting for /hbase/master znode up to 120s..."
+ZK_WAIT=120
+ZK_W=0
+ZK_HOST="${HBASE_ZK:-zookeeper:2181}"
+while [ $ZK_W -lt $ZK_WAIT ]; do
+  if docker exec -u root ${DEV_NAME} bash -lc "python - <<'PY'
+from kazoo.client import KazooClient
+import sys
+hosts='${ZK_HOST}'
+zk=KazooClient(hosts=hosts)
+try:
+    zk.start(timeout=5)
+    if zk.exists('/hbase/master'):
+        print('znode exists')
+        zk.stop()
+        sys.exit(0)
+    else:
+        zk.stop()
+        sys.exit(2)
+except Exception as e:
+    print('zk-check-exception', e)
+    sys.exit(3)
+PY" >/dev/null 2>&1; then
+    echo "/hbase/master znode present"
+    break
+  fi
+  sleep 2
+  ZK_W=$((ZK_W+2))
+done
+if [ $ZK_W -ge $ZK_WAIT ]; then
+  echo "Timed out waiting for /hbase/master znode" >&2
+  echo "Compose status:" >&2
+  $COMPOSE ps || true
+  $COMPOSE logs --tail=200 hbase || true
+  exit 1
+fi
+
 # Run pytest inside dev container
 echo "Running pytest inside ${DEV_NAME}..."
 
