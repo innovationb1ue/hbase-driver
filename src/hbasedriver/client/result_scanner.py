@@ -216,6 +216,94 @@ class ResultScanner:
             pass
         self.closed = True
 
+    def next_batch(self, n: int):
+        """Fetch up to n rows using server-side pagination where possible."""
+        if self.closed:
+            raise StopIteration
+        if n <= 0:
+            return []
+
+        requested = n
+        out_rows = []
+
+        while len(out_rows) < requested:
+            if self.scanner_id is None:
+                if not self.rl:
+                    raise StopIteration
+                rq = ScanRequest()
+                rq.region.type = 1
+                rq.region.value = self.rl.region_encoded
+                rq.scan.CopyFrom(self.scan.to_protobuf())
+                rq.number_of_rows = requested - len(out_rows)
+                rq.renew = True
+                rq.client_handles_partials = True
+                resp = self.rs_conn.send_request(rq, 'Scan')
+                self.scanner_id = resp.scanner_id
+            else:
+                rq = ScanRequest()
+                rq.scanner_id = self.scanner_id
+                rq.number_of_rows = requested - len(out_rows)
+                rq.client_handles_partials = True
+                resp = self.rs_conn.send_request(rq, 'Scan')
+
+            results = list(resp.results) if hasattr(resp, 'results') else []
+
+            for res in results:
+                if len(res.cell) == 0:
+                    continue
+                if getattr(res, 'partial', False):
+                    self.partial_buffer.extend(list(res.cell))
+                    continue
+                else:
+                    if self.partial_buffer:
+                        combined = self.partial_buffer + list(res.cell)
+                        row = self._row_from_cells(combined)
+                        self.partial_buffer = []
+                    else:
+                        row = self._row_from_cells(list(res.cell))
+
+                    if row is not None:
+                        out_rows.append(row)
+                        self.last_emitted_row = row
+
+                    if len(out_rows) >= requested:
+                        break
+
+            more_in_region = getattr(resp, 'more_results_in_region', False)
+            more_global = getattr(resp, 'more_results', False)
+
+            if not more_in_region and more_global and self.cluster_cnn is not None:
+                try:
+                    close_rq = ScanRequest()
+                    close_rq.scanner_id = self.scanner_id
+                    close_rq.close_scanner = True
+                    self.rs_conn.send_request(close_rq, 'Scan')
+                except Exception:
+                    pass
+
+                if not self.last_emitted_row:
+                    next_start = self.scan.start_row
+                else:
+                    next_start = self.last_emitted_row.rowkey + b'\x00'
+
+                try:
+                    self.rl = self.cluster_cnn.locate_region(self.table_name, next_start)
+                except Exception:
+                    break
+
+                from hbasedriver.regionserver import RsConnection
+                host = self.rl.host.decode('utf-8') if isinstance(self.rl.host, bytes) else self.rl.host
+                port = int(self.rl.port.decode('utf-8')) if isinstance(self.rl.port, bytes) else int(self.rl.port)
+                self.rs_conn = RsConnection().connect(host, port)
+                self.scanner_id = None
+                continue
+
+            if not out_rows:
+                break
+            return out_rows
+
+        return out_rows
+
 # /**
 # * This class has the logic for handling scanners for regions with and without replicas. 1. A scan
 # * is attempted on the default (primary) region, or a specific region. 2. The scanner sends all the

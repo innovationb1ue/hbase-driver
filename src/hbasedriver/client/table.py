@@ -53,6 +53,24 @@ class Table:
     def get_scanner(self, scan: Scan):
         return ResultScanner(scan, TableName.value_of(self.ns, self.tb), self.cluster_conn)
 
+    def scan_page(self, scan: Scan, page_size: int):
+        """Stateless pagination helper: open a scanner, fetch up to page_size rows, close and return (rows, resume_key)
+
+        Resume key is the last returned row's key (client should use start_row=resume_key and include_start_row=False to continue).
+        """
+        scanner = self.get_scanner(scan)
+        try:
+            rows = scanner.next_batch(page_size)
+            resume = None
+            if rows:
+                resume = rows[-1].rowkey
+            return rows, resume
+        finally:
+            try:
+                scanner.close()
+            except Exception:
+                pass
+
     def get_rs_connection(self, region: Region):
         conn = self.rs_conns.get((region.host, region.port))
         if not conn:
