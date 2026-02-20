@@ -106,8 +106,10 @@ else
   fi
 fi
 
+# Determine HBASE_ZK to use inside container (use host env if set, otherwise zookeeper:2181)
+TEST_HBASE_ZK="${HBASE_ZK:-zookeeper:2181}"
 if [ $# -eq 0 ]; then
-  docker exec -u root -i ${DEV_NAME} pytest -q
+  docker exec -u root -i ${DEV_NAME} env HBASE_ZK="${TEST_HBASE_ZK}" pytest -q
 else
-  docker exec -u root -i ${DEV_NAME} pytest -q -- "$@"
+  docker exec -u root -i ${DEV_NAME} env HBASE_ZK="${TEST_HBASE_ZK}" pytest -q -- "$@"
 fi
