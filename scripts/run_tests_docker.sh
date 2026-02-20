@@ -163,17 +163,22 @@ if [ $META_W -ge $META_WAIT ]; then
 fi
 
 # wait for Master to finish initialization (not just accepting connections)
-echo "Waiting for HBase Master to finish initialization up to 60s..."
-INIT_WAIT=60
+echo "Waiting for HBase Master to finish initialization up to 120s..."
+INIT_WAIT=120
 INIT_W=0
 while [ $INIT_W -lt $INIT_WAIT ]; do
-  if docker exec hbase_master tail -5 /hbase/logs/hbase--master-*.log 2>/dev/null | grep -q "Master has completed initialization"; then
+  if docker exec hbase_master tail -10 /hbase/logs/hbase--master-*.log 2>/dev/null | grep -q "Master has completed initialization"; then
     echo "Master initialization complete"
     break
   fi
-  sleep 2
-  INIT_W=$((INIT_W+2))
+  if docker exec hbase_master tail -10 /hbase/logs/hbase--master-*.log 2>/dev/null | grep -q "Successfully split"; then
+    echo "Master appears ready"
+    break
+  fi
+  sleep 3
+  INIT_W=$((INIT_W+3))
 done
+echo "Master initialization wait completed (waited ${INIT_W}s)"
 
 # Run pytest inside dev container
 echo "Running pytest inside ${DEV_NAME}..."
