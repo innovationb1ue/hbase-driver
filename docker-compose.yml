@@ -1,51 +1,25 @@
 version: "3.8"
 
 services:
-  zookeeper:
-    image: zookeeper:3.7
-    container_name: hbase_zookeeper
-    ports:
-      - "2181:2181"
-
-  hbase-master:
-    image: harisekhon/hbase
-    container_name: hbase_master
-    depends_on:
-      - zookeeper
-    environment:
-      - ZOOKEEPER_QUORUM=zookeeper
+  hbase:
+    build:
+      context: .
+      dockerfile: docker/hbase/Dockerfile
+    container_name: hbase
     ports:
       - "16010:16010"
       - "16000:16000"
-    command: master
-
-  hbase-regionserver:
-    image: harisekhon/hbase
-    container_name: hbase_regionserver
-    depends_on:
-      - hbase-master
-      - zookeeper
-    environment:
-      - ZOOKEEPER_QUORUM=zookeeper
-    command: regionserver
-
-  hbase-rest:
-    image: harisekhon/hbase
-    container_name: hbase_rest
-    depends_on:
-      - hbase-master
-    environment:
-      - ZOOKEEPER_QUORUM=zookeeper
-    command: rest
-
-  hbase-thrift:
-    image: harisekhon/hbase
-    container_name: hbase_thrift
-    depends_on:
-      - hbase-master
-    environment:
-      - ZOOKEEPER_QUORUM=zookeeper
-    command: thrift
+      - "16020:16020"
+      - "16030:16030"
+      - "2181:2181"
+    volumes:
+      - hbase-data:/hbase-data
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:16010/"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
 
   dev:
     build:
@@ -56,7 +30,11 @@ services:
       - ./:/workspace
     working_dir: /workspace
     depends_on:
-      - hbase-master
+      hbase:
+        condition: service_healthy
     tty: true
     stdin_open: true
     command: bash
+
+volumes:
+  hbase-data:
