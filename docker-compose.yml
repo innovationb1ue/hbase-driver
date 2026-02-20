@@ -56,7 +56,7 @@ services:
       - ./:/workspace
     working_dir: /workspace
     depends_on:
-      - hbase
+      - hbase-master
     tty: true
     stdin_open: true
     command: bash
