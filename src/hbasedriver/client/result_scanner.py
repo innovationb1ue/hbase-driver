@@ -184,6 +184,38 @@ class ResultScanner:
         if self.closed:
             return
 
+    def next(self, n=None):
+        """Compatibility helper: next() returns a single Row (like Java), next(n) returns up to n Rows."""
+        if n is None:
+            rows = self.__next__()
+            return rows[0] if rows else None
+        else:
+            acc = []
+            try:
+                while len(acc) < n:
+                    rows = self.__next__()
+                    if not rows:
+                        break
+                    acc.extend(rows)
+            except StopIteration:
+                pass
+            return acc[:n]
+
+    def close(self):
+        """Close the underlying server scanner if open and mark this scanner closed."""
+        if self.closed:
+            return
+        try:
+            if self.scanner_id and self.rs_conn:
+                rq = ScanRequest()
+                rq.scanner_id = self.scanner_id
+                rq.close_scanner = True
+                # best-effort close
+                self.rs_conn.send_request(rq, 'Scan')
+        except Exception:
+            pass
+        self.closed = True
+
 # /**
 # * This class has the logic for handling scanners for regions with and without replicas. 1. A scan
 # * is attempted on the default (primary) region, or a specific region. 2. The scanner sends all the
