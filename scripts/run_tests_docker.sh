@@ -63,6 +63,10 @@ HBASE_NAME="hbase"
 
 # Start or verify containers
 if [ $NO_START -eq 0 ]; then
+  # Clean up orphan containers before starting
+  echo "Cleaning up orphan containers..."
+  $COMPOSE down --remove-orphans >/dev/null 2>&1 || true
+  
   if [ $NO_BUILD -eq 0 ]; then
     echo "Building and starting containers..."
     $COMPOSE up --build -d
@@ -116,8 +120,9 @@ zk = KazooClient(hosts='hbase:2181')
 try:
     zk.start(timeout=5)
     master_exists = zk.exists('/hbase/master')
+    meta_exists = zk.exists('/hbase/meta-region-server')
     zk.stop()
-    sys.exit(0 if master_exists else 1)
+    sys.exit(0 if master_exists and meta_exists else 1)
 except Exception as e:
     sys.exit(2)
 PY" >/dev/null 2>&1; then
@@ -126,6 +131,29 @@ PY" >/dev/null 2>&1; then
   fi
   sleep 2
   ZK_W=$((ZK_W+2))
+done
+
+# Additional wait to ensure meta region is fully serving
+echo "Waiting for meta region to be fully ready..."
+READY_WAIT=30
+READY_W=0
+while [ $READY_W -lt $READY_WAIT ]; do
+  if docker exec -u root ${DEV_NAME} bash -lc "python - <<'PY'
+import sys
+try:
+    from hbasedriver.client import Client
+    client = Client(['hbase:2181'])
+    # Try a simple locate_meta call to verify connectivity
+    client.zk.locate_master(client.zk_quorum)
+    sys.exit(0)
+except Exception as e:
+    sys.exit(1)
+PY" >/dev/null 2>&1; then
+    echo "Meta region ready"
+    break
+  fi
+  sleep 1
+  READY_W=$((READY_W+1))
 done
 
 # Run pytest with user-provided arguments
