@@ -31,11 +31,19 @@ def locate_meta_region(zkquorum: list, establish_connection_timeout=5, missing_z
         raise Exception("Cannot connect to ZooKeeper at {}".format(zkquorum[0]))
 
     # locate meta region
-    try:
-        rsp, znodestat = zk.get(znode + "/meta-region-server")
-    except NoNodeError:
-        logger.error("cant locate meta-region-server, zk has no such node. ")
-        raise Exception("zk locate meta failed")
+    attempts = 0
+    while True:
+        try:
+            rsp, znodestat = zk.get(znode + "/meta-region-server")
+            break
+        except NoNodeError:
+            attempts += 1
+            if attempts > missing_znode_retries:
+                logger.error("cant locate meta-region-server, zk has no such node. ")
+                raise Exception("zk locate meta failed")
+            logger.info("/hbase/meta-region-server znode missing, retrying (%d/%d)", attempts, missing_znode_retries)
+            import time
+            time.sleep(1)
 
     zk.stop()
     if len(rsp) == 0:

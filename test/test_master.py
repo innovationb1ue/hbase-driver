@@ -5,7 +5,7 @@ import pytest
 from hbasedriver.client import Client
 from hbasedriver.exceptions.RemoteException import TableExistsException
 from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
-from src.hbasedriver.master import MasterConnection
+from hbasedriver.master import MasterConnection
 
 import os
 HBASE_ZK = os.getenv("HBASE_ZK", "127.0.0.1:2181")

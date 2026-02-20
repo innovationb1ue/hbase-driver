@@ -1,6 +1,6 @@
 from hbasedriver.common.table_name import TableName
-from src.hbasedriver.zk import locate_meta_region
-from src.hbasedriver.zk_connection_registry import ZKConnectionRegistry
+from hbasedriver.zk import locate_meta_region
+from hbasedriver.zk_connection_registry import ZKConnectionRegistry
 
 
 def test_locate_meta():

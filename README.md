@@ -1,124 +1,151 @@
 # hbase-driver
 
-Native Hbase driver in Python. (No thrift)
+Pure-Python native HBase client (no Thrift). This project implements core HBase regionserver and master RPCs so Python programs can perform table and metadata operations against an HBase cluster.
 
-### Introduction
+Key goals:
 
-- written in pure Python
-- native HBase protocol support (HBase 2.X+)
-- Support both admin operations and regionserver calls.
+- Provide a thin, idiomatic Python driver that mirrors the Java HBase client where practical.
+- Support both regionserver data operations (Put/Get/Scan/Delete) and master/admin operations (create/delete/describe table, namespaces, truncate, etc.).
+- Provide a reproducible Docker-based development environment that runs HBase + ZooKeeper and a separate dev container for running tests against the local HBase instance.
 
-### Installation (pip)
+Status (high level)
 
-```
-pip3 install hbase-driver
-```
+- Latest release: 1.0.1 — includes admin namespace APIs, truncate robustness, protobuf runtime requirement, Docker dev environment, and packaging fixes.
+- Implemented (non-exhaustive):
+  - Table operations: create, disable, delete, describe
+  - Data operations: Put, Get, Scan, Delete
+  - Admin operations: create_namespace, delete_namespace, list_namespaces, truncate_table (with robust fallback)
+  - Region location caching with validation against hbase:meta (reduces NotServingRegionException after truncate/delete+recreate)
 
-### Get Started
+Quickstart (Docker dev environment)
+
+Prerequisites: Docker and docker-compose installed.
+
+1. Start the development stack (zookeeper, hbase, dev container):
+
+   ```bash
+   docker-compose up --build -d
+   ```
+
+   The dev service is defined in docker-compose.yml and mounts the repository so your local code is used inside the container.
+
+2. Open a shell in the dev container (the entrypoint installs the local package in editable mode):
+
+   ```bash
+   docker-compose exec dev bash
+   ```
+
+3. Run the integration tests (they run against the local HBase instance started by compose):
+
+   ```bash
+   pytest -q
+   ```
+
+Local development without Docker
+
+- Install the package and runtime requirements locally for development:
+
+  ```bash
+  python -m pip install -e .
+  python -m pip install protobuf
+  pytest -q
+  ```
+
+  Note: many integration tests expect a running HBase; running tests in the Docker dev container is the simplest reproducible path.
+
+Usage example
 
 ```python
-import time
 from hbasedriver.client import Client
-from hbasedriver.operations import Put, Get, Scan, Delete
-from hbasedriver.exceptions.RemoteException import TableExistsException
-from hbasedriver.operations.column_family_builder import ColumnFamilyDescriptorBuilder
+from hbasedriver.operations import Put, Get, Scan
 
-# lets say your hbase instance runs on 127.0.0.1 (zk quorum address)
-client = Client(["127.0.0.1"])
+# Connect using ZooKeeper quorum addresses
+client = Client(["127.0.0.1"])  # example: local HBase dev stack
 
-# Define column families
-cf1_builder = ColumnFamilyDescriptorBuilder(b"cf1")
-cf1_builder.set_compression_type(b"SNAPPY")
-cf1_builder.set_max_versions(5)
-cf1_builder.set_time_to_live(86400)
-cf1_builder.set_block_size(65536)
-cf1_descriptor = cf1_builder.build()
-
-cf2_builder = ColumnFamilyDescriptorBuilder(b"cf2")
-cf2_builder.set_compression_type(b"LZO")
-cf2_builder.set_max_versions(3)
-cf2_builder.set_time_to_live(3600)
-cf2_builder.set_block_size(32768)
-cf2_descriptor = cf2_builder.build()
-
-column_families = [cf1_descriptor, cf2_descriptor]
-
-try:
-    client.create_table(b"", b"test_table_master", column_families, split_keys=[b"111111", b"222222", b"333333"])
-except TableExistsException:
-    pass
-
-table = client.get_table("", "mytable")
-# put
-table.put(Put(b'row1').add_column(b'cf1', b'qf', b'666'))
-table.put(Put(b'row1').add_column(b'cf1', b'qf2', b'999'))
-table.put(Put(b'row1').add_column(b'cf2', b'qf', b'777'))
-table.put(Put(b'row2').add_column(b'cf1', b'qf123', b'777'))
-# get
-result = table.get(Get(b"row1").add_column(b'cf1', b'qf'))
-print("get result =", result)
-assert b'666' == result.get(b'cf1', b'qf')
-
-# scan
-scan_result = table.scan(Scan(b"row1").add_family(b'cf1'))
-# retrieve all results from the iterator.
-scan_result = list(scan_result)
-print("scan result below:")
-for row in scan_result:
-    print(row)
-
-# delete
-table.delete(Delete(b"row1"))  # this will delete the whole row
-
-# check cf deleted
-result = table.get(Get(b"row1").add_column(b'cf1', b'qf'))
-assert result is None
-
-# disable table
-client.master_conn.disable_table(None, b"mytable")
-time.sleep(1)
-client.master_conn.delete_table(None, b"mytable")
-```
-
-#### Master (metadata) operations
-
-```Python
-from hbasedriver.client import Client
-
-client = Client(["127.0.0.1"])
-# describe table
-res = client.describe_table(b'', b"mytable")
+tbl = client.get_table("", "mytable")
+# Put a value
+tbl.put(Put(b"row1").add_column(b"cf", b"q", b"value"))
+# Get a value
+res = tbl.get(Get(b"row1").add_column(b"cf", b"q"))
 print(res)
-# table_name {
-#     namespace: "default"
-#     qualifier: "test_table_master"
-#   }
-#   attributes {
-#     first: "IS_META"
-#     second: "false"
-#   }
-#   attributes {
-#     first: "hbase.store.file-tracker.impl"
-#     second: "DEFAULT"
-#   }
-#   column_families {
-#     name: "cf1"
-#     attributes {
-#       first: "INDEX_BLOCK_ENCODING"
-#       second: "NONE"
-#     }
-# ..........
+# Scan
+for r in tbl.scan(Scan(b"row0")):
+    print(r)
 ```
 
-### Implemented
+Packaging & publishing
 
-- Create, Disable, Delete table
-- Put
-- Get
-- DELETE
-- Scan
+- A helper script build_upload.sh is included to build sdist/wheel and upload to TestPyPI or PyPI.
+  - For TestPyPI (test): `./build_upload.sh test`
+  - For production PyPI (prod): `./build_upload.sh prod`
+- Authentication options:
+  - Use a PyPI token (recommended) via environment variables in CI: set TWINE_API_TOKEN for production, or create a token on TestPyPI for test uploads.
+  - Example (token upload):
+    - For TestPyPI: `TWINE_USERNAME=__token__ TWINE_PASSWORD=<test-token> twine upload --repository test dist/*`
+    - For PyPI: `TWINE_USERNAME=__token__ TWINE_PASSWORD=<prod-token> twine upload --repository pypi dist/*`
+  - Alternatively, configure credentials in `~/.pypirc` and run `./build_upload.sh prod`.
+- Security: never commit API tokens to the repository; use CI secrets for automated uploads.
 
-### TODOs
+Notes and gotchas
 
-- Filters
-- More params in the operations. 
+- The driver requires the `protobuf` runtime to import the generated protobuf modules — protobuf is declared in pyproject.toml and should be installed in the environment.
+- HBase cluster quirks: some admin procedures (truncate, namespace ops) can be asynchronous; tests include waits/retries and the driver includes fallbacks (delete+recreate table) to achieve deterministic behavior in small single-node dev clusters.
+- When uploading to TestPyPI, ensure the API token was created on test.pypi.org (tokens are scoped to a registry).
+
+Files of interest
+
+- docker-compose.yml — brings up zookeeper, hbase, and the dev service used for running integration tests.
+- docker/Dockerfile & docker/entrypoint.sh — build and configure the dev image that mounts the repository and installs it in editable mode.
+- build_upload.sh — build and upload helper for TestPyPI / PyPI.
+- pyproject.toml / setup.py — packaging metadata and dependencies (including protobuf).
+- src/hbasedriver/ — driver implementation (client, admin wrappers, protobuf bindings, utilities).
+- test/ — integration tests that run against the containerized HBase instance.
+
+Contributing
+
+- Use the Docker dev environment to run and iterate on tests quickly:
+  - `docker-compose up --build -d` then `docker-compose exec dev bash` then `pytest -q`.
+- Open PRs for additional master RPCs or parity with the Java HBase client.
+
+License
+
+This project is released under the terms of the LICENSE file in this repository.
+
+
+## Runnable examples (tested)
+
+A small, test-friendly examples module (examples.py) is included that exercises the public
+Client/Admin/Table APIs without requiring a running HBase instance. The helpers accept a
+`client` object (the real `hbasedriver.client.Client` when used against a live cluster, or a
+lightweight fake client for unit tests).
+
+Files:
+
+- examples.py — provides create_table_example, data_ops_example, admin_namespace_example,
+  truncate_table_example, describe_table_example. These helpers avoid importing generated
+  protobuf types so they are safe to import and run in CI.
+- test/test_examples.py — unit tests that validate the examples using fake clients (no HBase).
+
+Run the example tests locally:
+
+```bash
+pytest -q test/test_examples.py
+```
+
+For real usage, call the examples with a configured client, for example:
+
+```python
+from hbasedriver.client.client import Client
+import examples
+
+conf = {"hbase.zookeeper.quorum": "127.0.0.1"}
+client = Client(conf)
+
+# Create a table (real code should pass proper ColumnFamilySchema objects)
+examples.create_table_example(client, b"default", b"mytable")
+
+# Basic data operations
+res, rows = examples.data_ops_example(client, b"default", b"mytable")
+print(res)
+```
+

@@ -13,6 +13,8 @@ RUN python -m pip install --upgrade pip setuptools wheel && \
 
 COPY . /workspace
 
+RUN pip install -e /workspace
+
 COPY docker/entrypoint.sh /usr/local/bin/entrypoint.sh
 RUN chmod +x /usr/local/bin/entrypoint.sh
 

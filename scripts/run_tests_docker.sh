@@ -125,6 +125,56 @@ if [ $ZK_W -ge $ZK_WAIT ]; then
   exit 1
 fi
 
+# additionally wait for the meta-region-server znode which can appear later after region assignment
+echo "Waiting for /hbase/meta-region-server znode up to 120s..."
+META_WAIT=120
+META_W=0
+while [ $META_W -lt $META_WAIT ]; do
+  if docker exec -u root ${DEV_NAME} bash -lc "python - <<'PY'
+from kazoo.client import KazooClient
+import sys
+hosts='${ZK_HOST}'
+zk=KazooClient(hosts=hosts)
+try:
+    zk.start(timeout=5)
+    if zk.exists('/hbase/meta-region-server'):
+        print('meta exists')
+        zk.stop()
+        sys.exit(0)
+    else:
+        zk.stop()
+        sys.exit(2)
+except Exception as e:
+    print('zk-check-exception', e)
+    sys.exit(3)
+PY" >/dev/null 2>&1; then
+    echo "/hbase/meta-region-server znode present"
+    break
+  fi
+  sleep 2
+  META_W=$((META_W+2))
+done
+if [ $META_W -ge $META_WAIT ]; then
+  echo "Timed out waiting for /hbase/meta-region-server znode" >&2
+  echo "Compose status:" >&2
+  $COMPOSE ps || true
+  $COMPOSE logs --tail=200 hbase-master || true
+  exit 1
+fi
+
+# wait for Master to finish initialization (not just accepting connections)
+echo "Waiting for HBase Master to finish initialization up to 60s..."
+INIT_WAIT=60
+INIT_W=0
+while [ $INIT_W -lt $INIT_WAIT ]; do
+  if docker exec hbase_master tail -5 /hbase/logs/hbase--master-*.log 2>/dev/null | grep -q "Master has completed initialization"; then
+    echo "Master initialization complete"
+    break
+  fi
+  sleep 2
+  INIT_W=$((INIT_W+2))
+done
+
 # Run pytest inside dev container
 echo "Running pytest inside ${DEV_NAME}..."
 
