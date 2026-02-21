@@ -1,6 +1,6 @@
 # hbase-driver
 
-[![Tests](https://github.com/jeffzhong/python-hbase-driver/actions/workflows/ci.yml/badge.svg)](https://github.com/jeffzhong/python-hbase-driver/actions)
+[![Tests](https://github.com/innovationb1ue/hbase-driver/actions/workflows/ci.yml/badge.svg)](https://github.com/innovationb1ue/hbase-driver/actions)
 [![License](https://img.shields.io/badge/license-Apache%202-blue.svg)](LICENSE)
 
 Pure-Python native HBase client (no Thrift). This project implements core HBase regionserver and master RPCs so Python programs can perform table and metadata operations against an HBase cluster.
