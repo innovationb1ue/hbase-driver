@@ -1,0 +1,32 @@
+name: CI - Integration tests
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+jobs:
+  integration:
+    name: Integration Tests (3-node cluster)
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v2
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Run integration tests (build + cluster + pytest)
+        env:
+          DOCKER_BUILDKIT: 1
+        run: |
+          set -euo pipefail
+          pwd
+          ls -la
+          chmod +x ./scripts/run_tests_3node.sh
+          ./scripts/run_tests_3node.sh
