@@ -1,4 +1,6 @@
 from hbasedriver.client.cluster_connection import ClusterConnection
+import logging
+logger = logging.getLogger('pybase.' + __name__)
 from hbasedriver.model import Row
 from hbasedriver.operations import Scan
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest
@@ -19,11 +21,11 @@ class ResultScanner:
     def __init__(self, a, b, c):
         # flexible constructor
         self.scanner_id = None
-        self.cluster_cnn: 'ClusterConnection' | None = None
+        self.cluster_cnn: 'ClusterConnection | None' = None
         self.table_name = None
         self.scan: 'Scan' = None
         self.rs_conn = None
-        self.rl: 'Region' | None = None
+        self.rl: 'Region | None' = None
 
         # state
         self.cache: list[Row] = []
@@ -52,7 +54,19 @@ class ResultScanner:
             from hbasedriver.regionserver import RsConnection
             host = self.rl.host.decode('utf-8') if isinstance(self.rl.host, bytes) else self.rl.host
             port = int(self.rl.port.decode('utf-8')) if isinstance(self.rl.port, bytes) else int(self.rl.port)
-            self.rs_conn: 'RsConnection' = RsConnection().connect(host, port)
+            try:
+                self.rs_conn: 'RsConnection' = RsConnection().connect(host, port)
+            except Exception:
+                # fallback to meta region host if connecting to the reported host fails
+                try:
+                    meta_loc = self.cluster_cnn.registry.get_meta_region_locations().locations[0].server_name
+                    meta_host = meta_loc.host
+                    meta_port = meta_loc.port
+                    meta_host = meta_host.decode('utf-8') if isinstance(meta_host, bytes) else meta_host
+                    meta_port = int(meta_port.decode('utf-8')) if isinstance(meta_port, bytes) else int(meta_port)
+                    self.rs_conn = RsConnection().connect(meta_host, meta_port)
+                except Exception:
+                    raise
 
     def __iter__(self):
         return self
@@ -71,114 +85,11 @@ class ResultScanner:
     def __next__(self):
         if self.closed:
             raise StopIteration
-
-        # how many rows to return in this iteration
-        requested = getattr(self.scan, 'limit', 1) or 1
-        out_rows = []
-
-        while len(out_rows) < requested:
-            # build or fetch results
-            if self.scanner_id is None:
-                # need a region to open scanner on
-                if not self.rl:
-                    # nothing to do in scanner-id mode without rs_conn
-                    raise StopIteration
-
-                rq = ScanRequest()
-                rq.region.type = 1
-                rq.region.value = self.rl.region_encoded
-                rq.scan.CopyFrom(self.scan.to_protobuf())
-                rq.number_of_rows = getattr(self.scan, 'caching', None) or requested
-                rq.renew = True
-                rq.client_handles_partials = True
-
-                resp = self.rs_conn.send_request(rq, 'Scan')
-                # record scanner id
-                self.scanner_id = resp.scanner_id
-            else:
-                rq = ScanRequest()
-                rq.scanner_id = self.scanner_id
-                rq.number_of_rows = getattr(self.scan, 'caching', None) or requested
-                rq.client_handles_partials = True
-                resp = self.rs_conn.send_request(rq, 'Scan')
-
-            # if no results returned
-            results = list(resp.results) if hasattr(resp, 'results') else []
-
-            # process results with partial assembly
-            for res in results:
-                # skip empty
-                if len(res.cell) == 0:
-                    continue
-
-                if getattr(res, 'partial', False):
-                    # buffer cells; do not emit until partial is False
-                    self.partial_buffer.extend(list(res.cell))
-                    continue
-                else:
-                    if self.partial_buffer:
-                        # combine buffered partial fragments and current
-                        combined = self.partial_buffer + list(res.cell)
-                        row = self._row_from_cells(combined)
-                        self.partial_buffer = []
-                    else:
-                        row = self._row_from_cells(list(res.cell))
-
-                    if row is not None:
-                        out_rows.append(row)
-                        self.last_emitted_row = row
-
-                    # stop early if we've satisfied requested
-                    if len(out_rows) >= requested:
-                        break
-
-            # If we have enough rows, return them
-            if len(out_rows) >= requested:
-                return out_rows
-
-            # If server indicated there are more results in other regions, move to next region.
-            more_in_region = getattr(resp, 'more_results_in_region', False)
-            more_global = getattr(resp, 'more_results', False)
-
-            if not more_in_region and more_global and self.cluster_cnn is not None:
-                # close existing scanner on this region if open
-                try:
-                    close_rq = ScanRequest()
-                    close_rq.scanner_id = self.scanner_id
-                    close_rq.close_scanner = True
-                    self.rs_conn.send_request(close_rq, 'Scan')
-                except Exception:
-                    pass
-
-                # determine start key for next region
-                if not self.last_emitted_row:
-                    # nothing emitted yet; use original scan.start_row
-                    next_start = self.scan.start_row
-                else:
-                    # resume after last emitted row
-                    next_start = self.last_emitted_row.rowkey + b'\x00'
-
-                # locate next region
-                try:
-                    self.rl = self.cluster_cnn.locate_region(self.table_name, next_start)
-                except Exception:
-                    # if we can't locate next region, stop iteration
-                    raise StopIteration
-
-                # connect to new region server
-                from hbasedriver.regionserver import RsConnection
-                host = self.rl.host.decode('utf-8') if isinstance(self.rl.host, bytes) else self.rl.host
-                port = int(self.rl.port.decode('utf-8')) if isinstance(self.rl.port, bytes) else int(self.rl.port)
-                self.rs_conn = RsConnection().connect(host, port)
-                # reset scanner id so we open a new scanner on new region in next loop
-                self.scanner_id = None
-                # continue loop to fetch more rows from new region
-                continue
-
-            # No more results globally or cannot continue; emit whatever we have or stop
-            if out_rows:
-                return out_rows
+        # Use next_batch to fetch a single Row for Python iteration semantics
+        rows = self.next_batch(1)
+        if not rows:
             raise StopIteration
+        return rows[0]
 
     def load_cache(self):
         if self.closed:
@@ -187,19 +98,9 @@ class ResultScanner:
     def next(self, n=None):
         """Compatibility helper: next() returns a single Row (like Java), next(n) returns up to n Rows."""
         if n is None:
-            rows = self.__next__()
-            return rows[0] if rows else None
+            return self.__next__()
         else:
-            acc = []
-            try:
-                while len(acc) < n:
-                    rows = self.__next__()
-                    if not rows:
-                        break
-                    acc.extend(rows)
-            except StopIteration:
-                pass
-            return acc[:n]
+            return self.next_batch(n)
 
     def close(self):
         """Close the underlying server scanner if open and mark this scanner closed."""
@@ -227,7 +128,9 @@ class ResultScanner:
         out_rows = []
 
         while len(out_rows) < requested:
+            opened_here = False
             if self.scanner_id is None:
+                opened_here = True
                 if not self.rl:
                     raise StopIteration
                 rq = ScanRequest()
@@ -272,6 +175,12 @@ class ResultScanner:
             more_in_region = getattr(resp, 'more_results_in_region', False)
             more_global = getattr(resp, 'more_results', False)
 
+            # If this scanner was opened in this loop iteration and produced no rows,
+            # try a follow-up scan request (some servers return an open-scanner response
+            # without rows and expect clients to call again).
+            if opened_here and not out_rows:
+                continue
+
             if not more_in_region and more_global and self.cluster_cnn is not None:
                 try:
                     close_rq = ScanRequest()
@@ -287,14 +196,34 @@ class ResultScanner:
                     next_start = self.last_emitted_row.rowkey + b'\x00'
 
                 try:
-                    self.rl = self.cluster_cnn.locate_region(self.table_name, next_start)
+                    next_rl = self.cluster_cnn.locate_region(self.table_name, next_start)
                 except Exception:
                     break
+
+                # If we locate the same region, there are no more regions to scan
+                if next_rl.region_encoded == self.rl.region_encoded:
+                    break
+
+                self.rl = next_rl
+                # Update the scan's start row so the new scanner opens after the last emitted row
+                self.scan.with_start_row(next_start, inclusive=True)
 
                 from hbasedriver.regionserver import RsConnection
                 host = self.rl.host.decode('utf-8') if isinstance(self.rl.host, bytes) else self.rl.host
                 port = int(self.rl.port.decode('utf-8')) if isinstance(self.rl.port, bytes) else int(self.rl.port)
-                self.rs_conn = RsConnection().connect(host, port)
+                try:
+                    self.rs_conn = RsConnection().connect(host, port)
+                except Exception:
+                    # fallback to meta host when region host connection fails
+                    try:
+                        meta_loc = self.cluster_cnn.registry.get_meta_region_locations().locations[0].server_name
+                        meta_host = meta_loc.host
+                        meta_port = meta_loc.port
+                        meta_host = meta_host.decode('utf-8') if isinstance(meta_host, bytes) else meta_host
+                        meta_port = int(meta_port.decode('utf-8')) if isinstance(meta_port, bytes) else int(meta_port)
+                        self.rs_conn = RsConnection().connect(meta_host, meta_port)
+                    except Exception:
+                        raise
                 self.scanner_id = None
                 continue
 

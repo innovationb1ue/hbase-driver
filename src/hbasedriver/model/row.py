@@ -13,6 +13,11 @@ class Row:
         self.rowkey = rowkey
         self.kv = kv
 
+    @property
+    def row(self):
+        """Backward-compatible alias used by some tests: row -> rowkey"""
+        return self.rowkey
+
     # get the value of target column, return None if not exist.
     def get(self, cf: bytes, qf: bytes):
         tmp = self.kv.get(cf)

@@ -4,7 +4,7 @@ from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableState
 
 
-def _retry_on_master_initializing(func, max_retries=30, delay=1):
+def _retry_on_master_initializing(func, max_retries=60, delay=3):
     """
     Wrapper that retries a function call if Master returns "is initializing" error.
     Useful during HBase startup when Master is still completing initialization.

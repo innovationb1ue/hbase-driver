@@ -1,26 +1,125 @@
 version: "3.8"
 
+# ───────────────────────────────────────────────────────────────
+#  Custom 3-node HBase cluster
+#    hbase-zk      – standalone ZooKeeper (custom image)
+#    hbase-master  – HBase Master          (custom image)
+#    hbase-rs1/2/3 – HBase RegionServers   (custom image)
+#    hbase_dev     – Python test runner     (existing image)
+# ───────────────────────────────────────────────────────────────
 services:
-  hbase:
+
+  # ─── ZooKeeper ────────────────────────────────────────────────
+  hbase-zk:
     build:
-      context: .
-      dockerfile: docker/hbase/Dockerfile
-    container_name: hbase
+      context: docker/zookeeper
+      dockerfile: Dockerfile
+    container_name: hbase-zk
+    hostname: hbase-zk
     ports:
-      - "16010:16010"
-      - "16000:16000"
-      - "16020:16020"
-      - "16030:16030"
       - "2181:2181"
-    volumes:
-      - hbase-data:/hbase-data
+    healthcheck:
+      test: ["CMD-SHELL", "echo ruok | nc localhost 2181 | grep imok"]
+      interval: 5s
+      timeout: 5s
+      retries: 15
+      start_period: 20s
+
+  # ─── HBase Master ─────────────────────────────────────────────
+  hbase-master:
+    build:
+      context: docker/hbase-master
+      dockerfile: Dockerfile
+    container_name: hbase-master
+    hostname: hbase-master
+    ports:
+      - "16000:16000"
+      - "16010:16010"
+    depends_on:
+      hbase-zk:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:16010/"]
+      interval: 10s
+      timeout: 5s
+      retries: 15
+      start_period: 45s
+    volumes:
+      - hbase-shared-data:/hbase-data
+
+  # ─── RegionServer 1 ───────────────────────────────────────────
+  hbase-rs1:
+    build:
+      context: docker/hbase-rs
+      dockerfile: Dockerfile
+    container_name: hbase-rs1
+    hostname: hbase-rs1
+    environment:
+      - HBASE_RS_HOSTNAME=hbase-rs1
+    ports:
+      - "16020:16020"
+      - "16030:16030"
+    depends_on:
+      hbase-master:
+        condition: service_healthy
+    volumes:
+      - hbase-shared-data:/hbase-data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 16020 && echo ok || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
 
+  # ─── RegionServer 2 ───────────────────────────────────────────
+  hbase-rs2:
+    build:
+      context: docker/hbase-rs
+      dockerfile: Dockerfile
+    container_name: hbase-rs2
+    hostname: hbase-rs2
+    environment:
+      - HBASE_RS_HOSTNAME=hbase-rs2
+    ports:
+      - "16021:16020"
+      - "16031:16030"
+    depends_on:
+      hbase-master:
+        condition: service_healthy
+    volumes:
+      - hbase-shared-data:/hbase-data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 16020 && echo ok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── RegionServer 3 ───────────────────────────────────────────
+  hbase-rs3:
+    build:
+      context: docker/hbase-rs
+      dockerfile: Dockerfile
+    container_name: hbase-rs3
+    hostname: hbase-rs3
+    environment:
+      - HBASE_RS_HOSTNAME=hbase-rs3
+    ports:
+      - "16022:16020"
+      - "16032:16030"
+    depends_on:
+      hbase-master:
+        condition: service_healthy
+    volumes:
+      - hbase-shared-data:/hbase-data
+    healthcheck:
+      test: ["CMD-SHELL", "nc -z localhost 16020 && echo ok || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+  # ─── Python dev/test container ───────────────────────────────
   dev:
     build:
       context: .
@@ -30,11 +129,18 @@ services:
       - ./:/workspace
     working_dir: /workspace
     depends_on:
-      hbase:
+      hbase-rs1:
         condition: service_healthy
+      hbase-rs2:
+        condition: service_healthy
+      hbase-rs3:
+        condition: service_healthy
+    environment:
+      - HBASE_ZK=hbase-zk:2181
     tty: true
     stdin_open: true
     command: bash
 
 volumes:
-  hbase-data:
+  hbase-shared-data:
+

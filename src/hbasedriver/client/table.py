@@ -1,4 +1,5 @@
 from hbasedriver.client.result_scanner import ResultScanner
+from hbasedriver.client.cluster_connection import ClusterConnection
 from hbasedriver.meta_server import MetaRsConnection
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
@@ -51,6 +52,9 @@ class Table:
         return self.get_scanner(scan)
 
     def get_scanner(self, scan: Scan):
+        # Ensure a cluster connection is available so scanners can locate regions spanning the cluster
+        if self.cluster_conn is None:
+            self.cluster_conn = ClusterConnection(self.conf)
         return ResultScanner(scan, TableName.value_of(self.ns, self.tb), self.cluster_conn)
 
     def scan_page(self, scan: Scan, page_size: int):

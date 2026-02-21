@@ -34,7 +34,27 @@ class Connection:
                 host = host.decode("utf-8")
             if not isinstance(port, int):
                 port = int(port)
-            self.conn = socket.create_connection((host, port), timeout=timeout)
+            try:
+                self.conn = socket.create_connection((host, port), timeout=timeout)
+            except OSError as e:
+                # If we encounter EADDRNOTAVAIL (Errno 99), try forcing IPv4 resolution
+                if getattr(e, 'errno', None) == 99:
+                    last_exc = e
+                    for af, socktype, proto, canonname, sa in socket.getaddrinfo(host, port, socket.AF_INET, socket.SOCK_STREAM):
+                        try:
+                            sock = socket.socket(af, socktype, proto)
+                            if timeout is not None:
+                                sock.settimeout(timeout)
+                            sock.connect(sa)
+                            self.conn = sock
+                            last_exc = None
+                            break
+                        except Exception as e2:
+                            last_exc = e2
+                    if last_exc is not None:
+                        raise last_exc
+                else:
+                    raise
             ch = ConnectionHeader()
             ch.user_info.effective_user = self.user
             ch.service_name = self.service_name

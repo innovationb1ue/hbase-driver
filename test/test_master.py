@@ -9,7 +9,9 @@ from hbasedriver.master import MasterConnection
 
 import os
 HBASE_ZK = os.getenv("HBASE_ZK", "127.0.0.1:2181")
-host = HBASE_ZK.split(':')[0]
+# In a 3-node cluster the master is separate from ZK; HBASE_MASTER overrides the host.
+HBASE_MASTER = os.getenv("HBASE_MASTER", HBASE_ZK.split(':')[0])
+host = HBASE_MASTER
 port = 16000
 ms_test_table = b'test_table_master'
 order_idx = 0
