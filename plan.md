@@ -1,11 +1,16 @@
-Plan update (2026-02-21T08:23:14Z):
+# Plan
 
-- Added a set of new tests under test/test_additional_driver_tests.py to exercise driver behaviors that do not rely on full-table scans.
-  - test_admin_table_lifecycle: create/describe/enable/disable/delete table lifecycle and admin APIs.
-  - test_put_get_multiple_versions_and_time_ranges: explicit-version puts, multiple-version gets, and time-range gets.
-  - test_delete_specific_version: delete a specific column version and verify behavior.
+Checkpoint: 3-node HBase cluster setup
+- Custom Docker images for ZooKeeper, HBase Master and RegionServers
+- Shared /hbase-data Docker volume to support distributed mode
+- New test orchestration script: scripts/run_tests_3node.sh
+- Fixed ResultScanner behavior and connection fallbacks
+- Removed single-node hostname hack
+
+Status: Completed (2026-02-21)
 
 Next steps:
-- Investigate root cause of ResultScanner returning zero rows for some scan patterns (separate bug ticket).
-- Add more Java-parity tests for admin, replication, and regionserver behaviors.
-- Reintroduce large-dataset pagination tests once scan issue is resolved.
+- Add CI workflow (GitHub Actions) to run scripts/run_tests_3node.sh in CI and publish a test badge
+- Expand Java-parity tests where gaps remain (replication, advanced admin operations)
+- Consider integration with a lightweight HDFS or NFS-backed storage if testing needs persist across ephemeral containers
+

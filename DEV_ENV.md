@@ -1,14 +1,21 @@
 Dev environment: docker-compose-based HBase and Python dev container
 
-To start everything:
+To start the custom 3-node cluster and run tests:
 
-  docker compose up --build
+  ./scripts/run_tests_3node.sh
 
-This starts Zookeeper, HBase, and a 'dev' container (hbase_dev) that mounts the repo and installs the Python package in editable mode.
-Enter the dev container to run tests or examples:
+This script will:
+- Build custom ZooKeeper, HBase Master and RegionServer images
+- Create a shared Docker volume for /hbase-data used by Master and RSes
+- Start ZK, Master, 3x RS, and the dev container
+- Wait for ZK, meta region, RS registration and master DDL readiness
+- Run pytest inside the dev container
 
-  docker exec -it hbase_dev bash
+For quick iterations where the cluster is already running use:
 
-Inside the container you can run examples from the README or a quick import test:
+  ./scripts/run_tests_3node.sh --no-start
 
-  python -c "from hbasedriver.client import Client; print('imported OK')"
+For the single-node dev environment (legacy) use:
+
+  ./scripts/run_tests_docker.sh
+

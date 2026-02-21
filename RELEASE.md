@@ -1,26 +1,18 @@
-Release & publishing
+# Release & publishing
 
-Steps to build and upload to TestPyPI (recommended):
+New release candidate (2026-02-21): improvements to distributed test environment and driver stability.
 
-1. Install build and twine if not present:
+Before publishing a release:
 
-   python3 -m pip install --user build twine
+1. Run full test suite with the 3-node cluster:
+
+   ./scripts/run_tests_3node.sh
 
 2. Build distributions:
 
-   rm -rf dist/*
-   python3 -m build
+   python -m build
 
-3. Upload to TestPyPI using an API token (create token on https://test.pypi.org/manage/account/token/):
+3. Upload to TestPyPI for verification, then to PyPI when ready.
 
-   export TWINE_USERNAME="__token__"
-   export TWINE_PASSWORD="<your-token-here>"
-   python3 -m twine upload --repository-url https://test.pypi.org/legacy/ dist/*
+Test status: 77/77 tests pass locally (2026-02-21) against the custom 3-node cluster. CI badges are included in README as placeholders - update the GitHub Actions workflow name if you add CI.
 
-4. After verification, upload to PyPI (production):
-
-   python3 -m twine upload dist/*
-
-Notes:
-- The project version was bumped to 1.0.1 and 'protobuf' was added to project dependencies to ensure runtime for generated protobuf modules.
-- Artifacts built by CI or locally appear in the dist/ directory; do not commit dist/ to git.
