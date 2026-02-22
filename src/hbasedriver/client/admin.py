@@ -1,7 +1,11 @@
 import time
+from typing import TYPE_CHECKING
 
 from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.HBase_pb2 import ColumnFamilySchema, TableState
+
+if TYPE_CHECKING:
+    from hbasedriver.client.client import Client
 
 
 def _retry_on_master_initializing(func, max_retries=60, delay=3):
@@ -31,8 +35,8 @@ class Admin:
     Mirrors the Java HBase Admin interface.
     """
 
-    def __init__(self, client):
-        self.client = client
+    def __init__(self, client: 'Client') -> None:
+        self.client: 'Client' = client
         self.master = client.master_conn
 
     def table_exists(self, table_name: TableName) -> bool:
@@ -42,18 +46,22 @@ class Admin:
         except Exception:
             return False
 
-    def create_table(self, table_name: TableName, column_families: list[ColumnFamilySchema],
-                     split_keys: list[bytes] = None):
+    def create_table(
+        self,
+        table_name: TableName,
+        column_families: list[ColumnFamilySchema],
+        split_keys: list[bytes] | None = None
+    ) -> None:
         _retry_on_master_initializing(
             lambda: self.master.create_table(table_name.ns, table_name.tb, column_families, split_keys)
         )
         self.client.check_regions_online(table_name.ns, table_name.tb, split_keys or [])
 
-    def delete_table(self, table_name: TableName):
+    def delete_table(self, table_name: TableName) -> None:
         self.master.delete_table(table_name.ns, table_name.tb)
         time.sleep(1)
 
-    def disable_table(self, table_name: TableName, timeout: int = 60):
+    def disable_table(self, table_name: TableName, timeout: int = 60) -> None:
         self.master.disable_table(table_name.ns, table_name.tb)
         # Wait for the logical table state to become DISABLED; regions may take longer to report CLOSED.
         start = time.time()
@@ -64,7 +72,7 @@ class Admin:
             time.sleep(1)
         raise TimeoutError("Timeout waiting for table to become DISABLED")
 
-    def enable_table(self, table_name: TableName, timeout: int = 60):
+    def enable_table(self, table_name: TableName, timeout: int = 60) -> None:
         self.master.enable_table(table_name.ns, table_name.tb)
         # Wait for logical table state to be ENABLED
         start = time.time()
@@ -89,19 +97,24 @@ class Admin:
     def list_tables(self, pattern: str = ".*", include_sys_tables: bool = False):
         return self.master.list_table_descriptors(pattern, include_sys_tables)
 
-    def create_namespace(self, namespace):
+    def create_namespace(self, namespace: bytes | str) -> None:
         """Create a namespace (accepts bytes or str)."""
         return self.master.create_namespace(namespace)
 
-    def delete_namespace(self, namespace):
+    def delete_namespace(self, namespace: bytes | str) -> None:
         """Delete a namespace (accepts bytes or str)."""
         return self.master.delete_namespace(namespace)
 
-    def list_namespaces(self) -> list:
+    def list_namespaces(self) -> list[str]:
         """List namespaces; returns list of namespace names (strings)."""
         return self.master.list_namespaces()
 
-    def truncate_table(self, table_name, preserve_splits: bool = False, timeout: int = 60):
+    def truncate_table(
+        self,
+        table_name: TableName,
+        preserve_splits: bool = False,
+        timeout: int = 60
+    ) -> None:
         """Truncate a table and wait for the truncate to complete.
 
         Implementation note: Some HBase deployments require the table to be disabled before truncation,
@@ -142,6 +155,6 @@ class Admin:
             except Exception:
                 pass
 
-    def close(self):
+    def close(self) -> None:
         # Optional cleanup logic
         pass

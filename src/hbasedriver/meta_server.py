@@ -3,14 +3,13 @@ from hbasedriver.exceptions.TableExceptions import TableNotFoundException
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
+from hbasedriver.hregion_location import HRegionLocation
 
 
 # encapsule the interaction with meta region server.
 class MetaRsConnection(RsConnection):
     # locate the region with given rowkey and table name. (must be called on rs with meta region)
-
-    # todo: make this return HRegionLocation
-    def locate_region(self, ns, tb, rowkey) -> Region:
+    def locate_region(self, ns, tb, rowkey) -> 'Region':
         rq = ScanRequest()
         # normalize inputs to bytes
         if isinstance(ns, str):
@@ -67,8 +66,8 @@ class MetaRsConnection(RsConnection):
 
         # iterate results and return the first region that matches the requested table
         for res in scan_resp.results:
-            regioninfo = Region.from_cells(res.cell)
-            if regioninfo.region_info.table_name.namespace == ns_for_compare and regioninfo.region_info.table_name.qualifier == tb:
-                return regioninfo
+            region = Region.from_cells(res.cell)
+            if region.region_info.table_name.namespace == ns_for_compare and region.region_info.table_name.qualifier == tb:
+                return region
 
         raise TableNotFoundException("Table not found {}.{}".format(ns.decode(), tb.decode()))

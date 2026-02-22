@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 # deferred import of ResultScanner inside scan() to avoid circular import
 from hbasedriver.model import CellType
 from hbasedriver.operations.delete import Delete
@@ -12,6 +14,9 @@ from hbasedriver.protobuf_py.HBase_pb2 import RegionLocation, RegionInfo, TimeRa
 from hbasedriver.Connection import Connection
 from hbasedriver.model.row import Row
 from hbasedriver.region import Region
+
+if TYPE_CHECKING:
+    from hbasedriver.client.result_scanner import ResultScanner
 
 
 class RsConnection(Connection):
@@ -74,7 +79,7 @@ class RsConnection(Connection):
         resp = self.send_request(rq, "Get")
         return Row.from_result(resp.result)
 
-    def delete(self, region, delete: Delete):
+    def delete(self, region: Region, delete: Delete) -> bool:
         """
         :param delete:
         :param region:
@@ -128,9 +133,7 @@ class RsConnection(Connection):
         return resp.processed
 
     def scan(self, region: Region, scan: Scan) -> 'ResultScanner':
-        # this first request to open the scanner.
-
-        # todo: refactor this to only return a valid resultScanner.
+        # Open scanner and return ResultScanner for the given region
         rq = ScanRequest()
         rq.region.type = 1
         rq.region.value = region.region_encoded
@@ -150,6 +153,13 @@ class RsConnection(Connection):
         from hbasedriver.client.result_scanner import ResultScanner
         return ResultScanner(scanner_id, scan, self)
 
-    # todo: impl this like the java code.
     def get_scanner(self, scan: Scan) -> 'ResultScanner':
-        pass
+        # This method is not currently implemented.
+        # For scanning, use Table.scan() or Table.get_scanner() which provide
+        # cluster-aware scanning that can span multiple regions.
+        # The ResultScanner(scan, table_name, cluster_connection) constructor
+        # provides the functionality referenced in the original TODO comment.
+        raise NotImplementedError(
+            "get_scanner() is not implemented. "
+            "Use Table.scan() or Table.get_scanner() for scanning operations."
+        )

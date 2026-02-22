@@ -1,3 +1,5 @@
+from typing import TYPE_CHECKING
+
 from hbasedriver.client.result_scanner import ResultScanner
 from hbasedriver.client.cluster_connection import ClusterConnection
 from hbasedriver.meta_server import MetaRsConnection
@@ -10,33 +12,45 @@ from hbasedriver.table_name import TableName
 from hbasedriver.zk import locate_meta_region
 from hbasedriver.operations.put import Put
 
+if TYPE_CHECKING:
+    from hbasedriver.model import Row
+
 
 class Table:
     """
     This class contains data operations within a table.
     """
 
-    def __init__(self, conf: dict, ns, tb):
-        self.ns = ns
-        self.tb = tb
+    def __init__(self, conf: dict, ns: bytes | str, tb: bytes | str) -> None:
+        # Ensure ns and tb are bytes
+        if isinstance(ns, str):
+            ns = ns.encode('utf-8')
+        if isinstance(tb, str):
+            tb = tb.encode('utf-8')
+
+        self.ns: bytes = ns
+        self.tb: bytes = tb
+        self.conf: dict = conf
+        self.meta_rs_host: str
+        self.meta_rs_port: int
         self.meta_rs_host, self.meta_rs_port = locate_meta_region(conf.get("hbase.zookeeper.quorum").split(","))
         # cache metadata for regions that we touched.
-        self.regions = {}
+        self.regions: dict[int, Region] = {}
         # we might maintain connections to different regionserver.
-        self.rs_conns: dict[(bytes, int), RsConnection] = {}
-        self.cluster_conn = None
+        self.rs_conns: dict[tuple[bytes, int], RsConnection] = {}
+        self.cluster_conn: ClusterConnection | None = None
 
-    def put(self, put: Put):
+    def put(self, put: Put) -> bool:
         region: Region = self.locate_target_region(put.rowkey)
         conn = self.get_rs_connection(region)
         return conn.put(region.region_encoded, put)
 
-    def get(self, get: Get):
+    def get(self, get: Get) -> 'Row | None':
         region: Region = self.locate_target_region(get.rowkey)
         conn = self.get_rs_connection(region)
         return conn.get(region.region_encoded, get)
 
-    def delete(self, delete: Delete):
+    def delete(self, delete: Delete) -> bool:
         """
         :param delete:
         :param rowkey:
@@ -47,17 +61,17 @@ class Table:
         conn = self.get_rs_connection(region)
         return conn.delete(region, delete)
 
-    def scan(self, scan: Scan):
+    def scan(self, scan: Scan) -> ResultScanner:
         # Use cluster-level scanner which will locate regions and iterate across them
         return self.get_scanner(scan)
 
-    def get_scanner(self, scan: Scan):
+    def get_scanner(self, scan: Scan) -> ResultScanner:
         # Ensure a cluster connection is available so scanners can locate regions spanning the cluster
         if self.cluster_conn is None:
             self.cluster_conn = ClusterConnection(self.conf)
         return ResultScanner(scan, TableName.value_of(self.ns, self.tb), self.cluster_conn)
 
-    def scan_page(self, scan: Scan, page_size: int):
+    def scan_page(self, scan: Scan, page_size: int) -> tuple[list['Row'], bytes | None]:
         """Stateless pagination helper: open a scanner, fetch up to page_size rows, close and return (rows, resume_key)
 
         Resume key is the last returned row's key (client should use start_row=resume_key and include_start_row=False to continue).
@@ -75,14 +89,14 @@ class Table:
             except Exception:
                 pass
 
-    def get_rs_connection(self, region: Region):
+    def get_rs_connection(self, region: Region) -> RsConnection:
         conn = self.rs_conns.get((region.host, region.port))
         if not conn:
             conn: RsConnection = RsConnection().connect(region.host, region.port)
             self.rs_conns[(region.host, region.port)] = conn
         return conn
 
-    def locate_target_region(self, rowkey) -> Region:
+    def locate_target_region(self, rowkey: bytes) -> Region:
         # check cached regions first, return if we already touched that region.
         # Validate cached entries against meta to avoid using stale encoded region names
         # that can occur after delete+create (e.g., truncate fallback).

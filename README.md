@@ -40,3 +40,11 @@ Legacy single-node dev workflow (still available):
 
 See TEST_GUIDE.md and DEV_ENV.md for full documentation and troubleshooting steps.
 
+Documentation
+
+- [API Reference](docs/api_reference.md) - Comprehensive API documentation
+- [Advanced Usage](docs/advanced_usage.md) - Advanced features and patterns
+- [Performance Guide](docs/performance_guide.md) - Performance tuning and optimization
+- [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Migration from happybase](docs/migration_from_happybase.md) - Guide for migrating from happybase/happybase-thrift
+

@@ -1,4 +1,5 @@
 import time
+from typing import TYPE_CHECKING
 
 from hbasedriver import zk
 from hbasedriver.client.admin import Admin
@@ -13,6 +14,9 @@ from hbasedriver.protobuf_py.HBase_pb2 import TableState
 from hbasedriver.region import Region
 from hbasedriver.zk import locate_meta_region
 
+if TYPE_CHECKING:
+    from hbasedriver.model import ColumnFamilyDescriptor
+
 
 class Client:
     """
@@ -20,17 +24,22 @@ class Client:
     Provides access to Admin, Table, and region metadata.
     """
 
-    def __init__(self, conf: dict):
+    def __init__(self, conf: dict) -> None:
         self.conf = conf
-        self.zk_quorum = conf.get("hbase.zookeeper.quorum").split(",")
+        self.zk_quorum: list[str] = conf.get("hbase.zookeeper.quorum").split(",")
+
+        self.master_host: str
+        self.master_port: int
+        self.meta_host: str
+        self.meta_port: int
 
         self.master_host, self.master_port = zk.locate_master(self.zk_quorum)
         self.meta_host, self.meta_port = zk.locate_meta_region(self.zk_quorum)
 
-        self.cluster_connection = ClusterConnection(conf)
+        self.cluster_connection: ClusterConnection = ClusterConnection(conf)
 
-        self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
-        self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)
+        self.master_conn: MasterConnection = MasterConnection().connect(self.master_host, self.master_port)
+        self.meta_conn: MetaRsConnection = MetaRsConnection().connect(self.meta_host, self.meta_port)
 
     def get_admin(self) -> Admin:
         return Admin(self)
@@ -42,7 +51,7 @@ class Client:
         table.cluster_conn = self.cluster_connection
         return table
 
-    def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]):
+    def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]) -> None:
         time.sleep(1)
         attempts = 0
         expected = len(split_keys) or 1  # At least 1 region
@@ -57,7 +66,7 @@ class Client:
 
         raise RuntimeError("Timeout: Not all regions came online after table creation.")
 
-    def get_table_state(self, ns: bytes, tb: bytes) -> TableState | None:
+    def get_table_state(self, ns: bytes, tb: bytes) -> 'TableState | None':
         """
         Returns the logical table state ('ENABLED', 'DISABLED', etc.) from hbase:meta using a direct Get.
         This does not reflect region-level state but the table metadata state.
@@ -147,28 +156,34 @@ class Client:
     def describe_table(self, ns: bytes, tb: bytes):
         return self.master_conn.describe_table(ns, tb)
 
-    def create_table(self, ns: bytes, tb: bytes, column_families, split_keys: list[bytes] = None):
+    def create_table(
+        self,
+        ns: bytes,
+        tb: bytes,
+        column_families: 'list[ColumnFamilyDescriptor]',
+        split_keys: list[bytes] | None = None
+    ) -> None:
         tn = TableName.value_of(ns or b"", tb)
         return self.get_admin().create_table(tn, column_families, split_keys)
 
-    def delete_table(self, ns: bytes, tb: bytes):
+    def delete_table(self, ns: bytes, tb: bytes) -> None:
         tn = TableName.value_of(ns or b"", tb)
         return self.get_admin().delete_table(tn)
 
-    def disable_table(self, ns: bytes, tb: bytes):
+    def disable_table(self, ns: bytes, tb: bytes) -> None:
         tn = TableName.value_of(ns or b"", tb)
         return self.get_admin().disable_table(tn)
 
-    def enable_table(self, ns: bytes, tb: bytes):
+    def enable_table(self, ns: bytes, tb: bytes) -> None:
         tn = TableName.value_of(ns or b"", tb)
         return self.get_admin().enable_table(tn)
 
-    def locate_region(self, table_name: TableName, row: bytes):
+    def locate_region(self, table_name: TableName, row: bytes) -> tuple[str, int]:
         if table_name == TableName.META_TABLE_NAME:
             return locate_meta_region(self.zk_quorum)
         return self.meta_conn.locate_region(table_name.ns, table_name.tb, row)
 
-    def __rebuild_connection(self):
+    def __rebuild_connection(self) -> None:
         self.master_host, self.master_port = zk.locate_master(self.zk_quorum)
         self.meta_host, self.meta_port = zk.locate_meta_region(self.zk_quorum)
         self.master_conn = MasterConnection().connect(self.master_host, self.master_port)

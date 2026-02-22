@@ -25,8 +25,7 @@ class ClusterConnection(ABC):
         else:
             return self.locate_region_in_meta(table_name, row)
 
-    # todo: make this return HRegionLocations.
-    def locate_region_in_meta(self, table_name: TableName, rowkey: bytes):
+    def locate_region_in_meta(self, table_name: TableName, rowkey: bytes) -> 'Region':
         # check cached regions first, return if we already touched that region.
         for region in self.regions.values():
             if region.key_in_region(rowkey):
