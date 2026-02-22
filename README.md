@@ -37,6 +37,22 @@ with client.get_table("default", "mytable") as table:
             print(row.rowkey)
 ```
 
+## Complete Example
+
+For a comprehensive example covering all major features, see [complete_example.py](complete_example.py) which demonstrates:
+
+- Basic CRUD operations (Put, Get, Delete, Scan)
+- Advanced features (Batch, CheckAndPut, Increment)
+- Filter usage for server-side filtering
+- DDL operations (Create, Disable, Enable, Delete, Truncate)
+- Connection management and resource cleanup
+- Cache invalidation after table modifications
+
+Run the example:
+```bash
+python3 complete_example.py
+```
+
 ## Installation
 
 ```bash
