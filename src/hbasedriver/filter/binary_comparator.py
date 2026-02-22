@@ -19,7 +19,9 @@ class BinaryComparator(ByteArrayComparable):
 
     def to_byte_array(self) -> bytes:
         comparator_proto = BinaryComparatorProto()
-        comparator_proto.comparable = ByteArrayComparableProto(self.value)
+        comparable_proto = ByteArrayComparableProto()
+        comparable_proto.value = self.value
+        comparator_proto.comparable.CopyFrom(comparable_proto)
         return comparator_proto.SerializeToString()
 
     @staticmethod

@@ -19,12 +19,64 @@ if TYPE_CHECKING:
 
 
 class Client:
-    """
-    Client acts like HBase Java Connection.
-    Provides access to Admin, Table, and region metadata.
+    """Main client class for connecting to and interacting with HBase.
+
+    The Client class acts like the HBase Java Connection interface.
+    It provides access to Admin (for DDL operations), Table (for DML operations),
+    and region metadata.
+
+    Example:
+        >>> from hbasedriver.client.client import Client
+        >>> from hbasedriver.hbase_constants import HConstants
+        >>>
+        >>> # Initialize with configuration
+        >>> config = {HConstants.ZOOKEEPER_QUORUM: "localhost:2181"}
+        >>> client = Client(config)
+        >>>
+        >>> # Use with context manager for automatic cleanup
+        >>> with client.get_table(b"default", b"mytable") as table:
+        ...     table.put(Put(b"row1").add_column(b"cf", b"col", b"value"))
+        >>>
+        >>> # Or use directly
+        >>> table = client.get_table(b"default", b"mytable")
+        >>> try:
+        ...     # operations
+        ...     pass
+        ... finally:
+        ...     table.close()
+        >>> client.close()
+
+    Attributes:
+        conf: Configuration dictionary
+        zk_quorum: List of ZooKeeper quorum addresses
+        master_host: HBase master host
+        master_port: HBase master port
+        meta_host: HBase meta region host
+        meta_port: HBase meta region port
+        cluster_connection: Cluster connection for region location
+        master_conn: Connection to HBase master
+        meta_conn: Connection to HBase meta region server
     """
 
     def __init__(self, conf: dict) -> None:
+        """Initialize a new HBase client.
+
+        Args:
+            conf: Configuration dictionary with the following keys:
+                - hbase.zookeeper.quorum (required): ZooKeeper quorum addresses
+                - hbase.connection.pool.size (optional): Max connections per pool
+                - hbase.connection.idle.timeout (optional): Idle timeout in seconds
+
+        Raises:
+            KeyError: If required configuration is missing
+
+        Example:
+            >>> config = {
+            ...     "hbase.zookeeper.quorum": "localhost:2181",
+            ...     "hbase.connection.pool.size": 20
+            ... }
+            >>> client = Client(config)
+        """
         self.conf = conf
         self.zk_quorum: list[str] = conf.get("hbase.zookeeper.quorum").split(",")
 
@@ -42,16 +94,51 @@ class Client:
         self.meta_conn: MetaRsConnection = MetaRsConnection().connect(self.meta_host, self.meta_port)
 
     def get_admin(self) -> Admin:
+        """Get an Admin instance for performing DDL operations.
+
+        Returns:
+            Admin instance for table management operations
+
+        Example:
+            >>> with client.get_admin() as admin:
+            ...     if not admin.table_exists(TableName.value_of(b"mytable")):
+            ...         # create table logic
+            ...         pass
+        """
         return Admin(self)
 
     def get_table(self, ns: bytes | None, tb: bytes) -> Table:
+        """Get a Table instance for performing DML operations.
 
+        Args:
+            ns: Namespace (bytes). If None, uses "default" namespace
+            tb: Table name (bytes)
+
+        Returns:
+            Table instance for data operations
+
+        Example:
+            >>> table = client.get_table(b"default", b"mytable")
+            >>> # or use with context manager
+            >>> with client.get_table(b"mytable") as table:
+            ...     table.put(Put(b"row1").add_column(b"cf", b"col", b"value"))
+        """
         table = Table(self.conf, ns or b"default", tb)
         # attach cluster connection so Table can locate regions via the cluster
         table.cluster_conn = self.cluster_connection
         return table
 
     def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]) -> None:
+        """Wait for all regions of a table to come online.
+
+        Args:
+            ns: Namespace (bytes)
+            tb: Table name (bytes)
+            split_keys: List of split keys used when creating the table
+
+        Raises:
+            RuntimeError: If regions do not come online within timeout
+        """
         time.sleep(1)
         attempts = 0
         expected = len(split_keys) or 1  # At least 1 region
@@ -67,9 +154,23 @@ class Client:
         raise RuntimeError("Timeout: Not all regions came online after table creation.")
 
     def get_table_state(self, ns: bytes, tb: bytes) -> 'TableState | None':
-        """
-        Returns the logical table state ('ENABLED', 'DISABLED', etc.) from hbase:meta using a direct Get.
-        This does not reflect region-level state but the table metadata state.
+        """Get the logical table state.
+
+        Returns the logical table state ('ENABLED', 'DISABLED', etc.) from
+        hbase:meta using a direct Get. This does not reflect region-level
+        state but the table metadata state.
+
+        Args:
+            ns: Namespace (bytes)
+            tb: Table name (bytes)
+
+        Returns:
+            TableState if table exists, None otherwise
+
+        Example:
+            >>> state = client.get_table_state(b"default", b"mytable")
+            >>> if state and state.state == TableState.ENABLED:
+            ...     print("Table is enabled")
         """
         # Construct the logical table rowkey
         if not ns or ns == b"default":
@@ -188,3 +289,47 @@ class Client:
         self.meta_host, self.meta_port = zk.locate_meta_region(self.zk_quorum)
         self.master_conn = MasterConnection().connect(self.master_host, self.master_port)
         self.meta_conn = MetaRsConnection().connect(self.meta_host, self.meta_port)
+
+    def __enter__(self):
+        """Enter the context manager.
+
+        Returns:
+            The Client instance
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and close all resources.
+
+        Args:
+            exc_type: Exception type if an exception occurred
+            exc_val: Exception value if an exception occurred
+            exc_tb: Exception traceback if an exception occurred
+
+        Returns:
+            False - don't suppress any exceptions
+        """
+        self.close()
+        return False
+
+    def close(self):
+        """Close the client and release all resources.
+
+        This closes the cluster connection and cleans up any cached resources.
+        """
+        # Close cluster connection if exists
+        if hasattr(self, 'cluster_connection') and self.cluster_connection:
+            self.cluster_connection.close()
+
+        # Close master and meta connections
+        if hasattr(self, 'master_conn') and self.master_conn:
+            try:
+                self.master_conn.close()
+            except Exception:
+                pass
+
+        if hasattr(self, 'meta_conn') and self.meta_conn:
+            try:
+                self.meta_conn.close()
+            except Exception:
+                pass

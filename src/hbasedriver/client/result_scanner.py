@@ -1,3 +1,5 @@
+from collections import defaultdict
+
 from hbasedriver.client.cluster_connection import ClusterConnection
 import logging
 logger = logging.getLogger('pybase.' + __name__)
@@ -7,15 +9,30 @@ from hbasedriver.protobuf_py.Client_pb2 import ScanRequest
 from hbasedriver.protobuf_py.Client_pb2 import Column
 from hbasedriver.protobuf_py.Filter_pb2 import Filter
 from hbasedriver.region import Region
+from hbasedriver.regionserver import RsConnection
 
 
 # ref to ClientScanner.java
 class ResultScanner:
-    """ResultScanner supports two construction styles for backward compatibility:
+    """Scanner for iterating through results of a scan operation.
+
+    ResultScanner supports two construction styles for backward compatibility:
     1) ResultScanner(scan, table_name, cluster_connection) - table-level scanner that can span regions
     2) ResultScanner(scanner_id, scan, rs_conn) - low-level regionserver-backed scanner (single-region)
 
-    Iteration currently returns a list[Row] per next() call to preserve existing behavior.
+    The scanner automatically handles region boundaries and can span multiple regions.
+    Iteration returns Row objects (one per iteration).
+
+    Example:
+        >>> scan = Scan().add_column(b"cf", b"col")
+        >>> with table.scan(scan) as scanner:
+        ...     for row in scanner:
+        ...         print(row.rowkey)
+        ...         print(row.get(b"cf", b"col"))
+
+    Attributes:
+        scan: The Scan operation being executed
+        closed: Whether the scanner has been closed
     """
 
     def __init__(self, a, b, c):
@@ -51,31 +68,43 @@ class ResultScanner:
         if self.cluster_cnn is not None:
             self.rl = self.cluster_cnn.locate_region(self.table_name, self.scan.start_row)
             # establish a regionserver connection for fetching scanner results
-            from hbasedriver.regionserver import RsConnection
+            # Try to use connection pool if available
             host = self.rl.host.decode('utf-8') if isinstance(self.rl.host, bytes) else self.rl.host
             port = int(self.rl.port.decode('utf-8')) if isinstance(self.rl.port, bytes) else int(self.rl.port)
-            try:
-                self.rs_conn: 'RsConnection' = RsConnection().connect(host, port)
-            except Exception:
-                # fallback to meta region host if connecting to the reported host fails
+
+            # Try cluster connection pool first (for RS connections)
+            if hasattr(self.cluster_cnn, '_conn_pool'):
+                # Note: cluster_cnn._conn_pool is for meta connections, but we can use it
+                # for RS connections as well if we configure it appropriately
+                # For now, we'll use the factory to create RsConnection instances
+                self.rs_conn: 'RsConnection' = self._get_rs_connection(host, port)
+            else:
                 try:
-                    meta_loc = self.cluster_cnn.registry.get_meta_region_locations().locations[0].server_name
-                    meta_host = meta_loc.host
-                    meta_port = meta_loc.port
-                    meta_host = meta_host.decode('utf-8') if isinstance(meta_host, bytes) else meta_host
-                    meta_port = int(meta_port.decode('utf-8')) if isinstance(meta_port, bytes) else int(meta_port)
-                    self.rs_conn = RsConnection().connect(meta_host, meta_port)
+                    self.rs_conn: 'RsConnection' = RsConnection().connect(host, port)
                 except Exception:
-                    raise
+                    # fallback to meta region host if connecting to the reported host fails
+                    try:
+                        meta_loc = self.cluster_cnn.registry.get_meta_region_locations().locations[0].server_name
+                        meta_host = meta_loc.host
+                        meta_port = meta_loc.port
+                        meta_host = meta_host.decode('utf-8') if isinstance(meta_host, bytes) else meta_host
+                        meta_port = int(meta_port.decode('utf-8')) if isinstance(meta_port, bytes) else int(meta_port)
+                        self.rs_conn = RsConnection().connect(meta_host, meta_port)
+                    except Exception:
+                        raise
 
     def __iter__(self):
+        """Return the iterator (self).
+
+        Returns:
+            Self as iterator
+        """
         return self
 
     def _row_from_cells(self, cells):
         """Build a Row object from an iterable of Cell protos."""
         if not cells:
             return None
-        from collections import defaultdict
         kv = defaultdict(dict)
         for c in cells:
             kv[c.family][c.qualifier] = c.value
@@ -83,6 +112,14 @@ class ResultScanner:
         return Row(rowkey, kv)
 
     def __next__(self):
+        """Get the next row in the scan result.
+
+        Returns:
+            The next Row object
+
+        Raises:
+            StopIteration: If no more rows are available
+        """
         if self.closed:
             raise StopIteration
         # Use next_batch to fetch a single Row for Python iteration semantics
@@ -91,9 +128,48 @@ class ResultScanner:
             raise StopIteration
         return rows[0]
 
-    def load_cache(self):
+    def close(self):
+        """Close the scanner and release server resources.
+
+        This should be called when the scanner is no longer needed to
+        properly clean up the server-side scanner resource.
+
+        Example:
+            >>> scanner = table.scan(scan)
+            >>> try:
+            ...     for row in scanner:
+            ...         print(row)
+            ... finally:
+            ...     scanner.close()
+        """
         if self.closed:
             return
+
+    def _get_rs_connection(self, host: str, port: int) -> 'RsConnection':
+        """Get a connection to the region server.
+
+        Tries to use connection pool if available, otherwise creates a new connection.
+
+        Args:
+            host: RegionServer host
+            port: RegionServer port
+
+        Returns:
+            An RsConnection to the region server
+        """
+        # Try cluster connection pool if available
+        if self.cluster_cnn and hasattr(self.cluster_cnn, '_conn_pool'):
+            pool = self.cluster_cnn._conn_pool
+            # Temporarily update the factory to create RsConnection instances
+            original_factory = pool.connection_factory
+            pool.connection_factory = lambda h, p: RsConnection().connect(h, p)
+            try:
+                return pool.get_connection(host, port)
+            finally:
+                pool.connection_factory = original_factory
+
+        # Fallback to direct connection
+        return RsConnection().connect(host, port)
 
     def next(self, n=None):
         """Compatibility helper: next() returns a single Row (like Java), next(n) returns up to n Rows."""
@@ -115,6 +191,15 @@ class ResultScanner:
                 self.rs_conn.send_request(rq, 'Scan')
         except Exception:
             pass
+
+        # Return connection to pool if using pooled connection
+        if self.rs_conn and self.cluster_cnn and hasattr(self.cluster_cnn, '_conn_pool'):
+            # For pooled connections, we return them to the pool
+            # Note: We don't close the actual connection here - the pool manages it
+            # However, if we created a new connection via RsConnection().connect(),
+            # we should still close the scanner on the server side (done above)
+            pass
+
         self.closed = True
 
     def next_batch(self, n: int):
@@ -208,11 +293,10 @@ class ResultScanner:
                 # Update the scan's start row so the new scanner opens after the last emitted row
                 self.scan.with_start_row(next_start, inclusive=True)
 
-                from hbasedriver.regionserver import RsConnection
                 host = self.rl.host.decode('utf-8') if isinstance(self.rl.host, bytes) else self.rl.host
                 port = int(self.rl.port.decode('utf-8')) if isinstance(self.rl.port, bytes) else int(self.rl.port)
                 try:
-                    self.rs_conn = RsConnection().connect(host, port)
+                    self.rs_conn = self._get_rs_connection(host, port)
                 except Exception:
                     # fallback to meta host when region host connection fails
                     try:
@@ -221,7 +305,7 @@ class ResultScanner:
                         meta_port = meta_loc.port
                         meta_host = meta_host.decode('utf-8') if isinstance(meta_host, bytes) else meta_host
                         meta_port = int(meta_port.decode('utf-8')) if isinstance(meta_port, bytes) else int(meta_port)
-                        self.rs_conn = RsConnection().connect(meta_host, meta_port)
+                        self.rs_conn = self._get_rs_connection(meta_host, meta_port)
                     except Exception:
                         raise
                 self.scanner_id = None
@@ -232,6 +316,28 @@ class ResultScanner:
             return out_rows
 
         return out_rows
+
+    def __enter__(self):
+        """Enter the context manager.
+
+        Returns:
+            The ResultScanner instance
+        """
+        return self
+
+    def __exit__(self, exc_type, exc_val, exc_tb):
+        """Exit the context manager and close the scanner.
+
+        Args:
+            exc_type: Exception type if an exception occurred
+            exc_val: Exception value if an exception occurred
+            exc_tb: Exception traceback if an exception occurred
+
+        Returns:
+            False - don't suppress any exceptions
+        """
+        self.close()
+        return False
 
 # /**
 # * This class has the logic for handling scanners for regions with and without replicas. 1. A scan

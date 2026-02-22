@@ -44,6 +44,10 @@ def test_truncate_table():
     # Truncate
     admin.truncate_table(tn, preserve_splits=False)
 
+    # Invalidate the region cache to force fresh region lookups
+    # The table's region cache is stale after truncate (table was deleted and recreated)
+    table.invalidate_cache()
+
     # Wait until data removed; tolerate transient NotServingRegionException while regions are reassigned
     end = time.time() + 60
     success = False

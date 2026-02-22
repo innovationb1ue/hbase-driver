@@ -105,7 +105,7 @@ class CompareFilter(FilterBase):
         # set this name to java class name.
         ctor_proto.name = self.comparator.get_name()
         ctor_proto.serialized_comparator = self.comparator.to_byte_array()
-        t.comparator = ctor_proto
+        t.comparator.CopyFrom(ctor_proto)
         return t
 
     # this should return **JAVA** class path !!!!

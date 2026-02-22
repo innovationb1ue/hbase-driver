@@ -6,6 +6,9 @@ from hbasedriver.util.protobuf_util import ProtobufUtil
 
 
 class BinaryPrefixComparator(ByteArrayComparable):
+    def get_name(self):
+        return "org.apache.hadoop.hbase.filter.BinaryPrefixComparator"
+
     def __init__(self, value):
         super().__init__(value)
 

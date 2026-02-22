@@ -64,7 +64,7 @@ class RowFilter(CompareFilter):
 
     def to_byte_array(self) -> bytes:
         builder = FilterProtos.RowFilter()
-        builder.compare_filter = self.convert()
+        builder.compare_filter.CopyFrom(self.convert())
         return builder.SerializeToString()
 
     @staticmethod

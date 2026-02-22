@@ -10,6 +10,9 @@ from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
 from hbasedriver.operations.put import Put
 
+# Constants for commonly used byte values to avoid repeated allocations
+_COLON = b':'
+
 if TYPE_CHECKING:
     from hbasedriver.client.table import Table
 
@@ -54,9 +57,9 @@ class Batch:
         put = Put(rowkey)
 
         for key, value in data.items():
-            if b':' in key:
+            if _COLON in key:
                 # Format: b'cf:qualifier' -> b'value'
-                family, qualifier = key.split(b':', 1)
+                family, qualifier = key.split(_COLON, 1)
                 put.add_column(family, qualifier, value)
             else:
                 # Format: b'family' -> {b'qualifier': b'value'}
@@ -83,8 +86,8 @@ class Batch:
 
         if columns:
             for column in columns:
-                if b':' in column:
-                    family, qualifier = column.split(b':', 1)
+                if _COLON in column:
+                    family, qualifier = column.split(_COLON, 1)
                     delete.add_column(family, qualifier)
                 else:
                     delete.add_family(column)
