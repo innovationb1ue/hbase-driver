@@ -10,7 +10,7 @@ dependencies = ['kazoo', 'protobuf']
 
 [tool.setuptools]
 package-dir = { "" = "src" }
-packages = ["hbasedriver", "hbasedriver.protobuf_py", "hbasedriver.operations", "hbasedriver.model", "hbasedriver.exceptions", "hbasedriver.client", "hbasedriver.filter", "hbasedriver.util"]
+packages = ["hbasedriver", "hbasedriver.common", "hbasedriver.connection", "hbasedriver.exceptions", "hbasedriver.client", "hbasedriver.filter", "hbasedriver.master1", "hbasedriver.model", "hbasedriver.operations", "hbasedriver.protobuf", "hbasedriver.protobuf_py", "hbasedriver.util"]
 
 [project.urls]
 Homepage = "https://github.com/innovationb1ue/hbase-driver"

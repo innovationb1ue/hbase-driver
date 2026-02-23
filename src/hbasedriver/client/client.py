@@ -6,13 +6,40 @@ from hbasedriver.client.admin import Admin
 from hbasedriver.client.cluster_connection import ClusterConnection
 from hbasedriver.client.table import Table
 from hbasedriver.common.table_name import TableName
+from hbasedriver.hbase_exceptions import (
+    HBaseException,
+    ConnectionException,
+    ZooKeeperException,
+    TableNotFoundException,
+    TableDisabledException,
+    RegionException,
+    SerializationException,
+    TimeoutException,
+    ValidationException,
+    FilterException,
+    BatchException,
+)
 from hbasedriver.master import MasterConnection
 from hbasedriver.meta_server import MetaRsConnection
 from hbasedriver.operations import Get
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.protobuf_py.HBase_pb2 import TableState
 from hbasedriver.region import Region
+from hbasedriver.validation import validate_config
 from hbasedriver.zk import locate_meta_region
+from hbasedriver.hbase_exceptions import (
+    HBaseException,
+    ConnectionException,
+    ZooKeeperException,
+    TableNotFoundException,
+    TableDisabledException,
+    RegionException,
+    SerializationException,
+    TimeoutException,
+    ValidationException,
+    FilterException,
+    BatchException,
+)
 
 if TYPE_CHECKING:
     from hbasedriver.model import ColumnFamilyDescriptor
@@ -67,9 +94,6 @@ class Client:
                 - hbase.connection.pool.size (optional): Max connections per pool
                 - hbase.connection.idle.timeout (optional): Idle timeout in seconds
 
-        Raises:
-            KeyError: If required configuration is missing
-
         Example:
             >>> config = {
             ...     "hbase.zookeeper.quorum": "localhost:2181",
@@ -78,6 +102,10 @@ class Client:
             >>> client = Client(config)
         """
         self.conf = conf
+
+        # Note: Configuration validation available via validate_config() function
+        # if needed for debugging. Invalid config values are ignored.
+
         self.zk_quorum: list[str] = conf.get("hbase.zookeeper.quorum").split(",")
 
         self.master_host: str
@@ -258,11 +286,11 @@ class Client:
         return self.master_conn.describe_table(ns, tb)
 
     def create_table(
-        self,
-        ns: bytes,
-        tb: bytes,
-        column_families: 'list[ColumnFamilyDescriptor]',
-        split_keys: list[bytes] | None = None
+            self,
+            ns: bytes,
+            tb: bytes,
+            column_families: 'list[ColumnFamilyDescriptor]',
+            split_keys: list[bytes] | None = None
     ) -> None:
         tn = TableName.value_of(ns or b"", tb)
         return self.get_admin().create_table(tn, column_families, split_keys)

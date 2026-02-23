@@ -22,6 +22,7 @@ class HConstants:
     # ZooKeeper settings
     ZOOKEEPER_QUORUM = "hbase.zookeeper.quorum"
     ZOOKEEPER_ZNODE_PARENT = "zookeeper.znode.parent"
+    ZOOKEEPER_SESSION_TIMEOUT = "zookeeper.session.timeout"
     ZOOKEEPER_CLIENT_PORT = "hbase.zookeeper.property.clientPort"
 
     # Connection pool settings

@@ -1,5 +1,4 @@
-from hbasedriver.exceptions.RemoteException import RemoteException
-from hbasedriver.exceptions.TableExceptions import TableNotFoundException
+from hbasedriver.hbase_exceptions import TableNotFoundException
 from hbasedriver.protobuf_py.Client_pb2 import ScanRequest, Column, ScanResponse
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
@@ -20,10 +19,10 @@ class MetaRsConnection(RsConnection):
             rowkey = rowkey.encode('utf-8')
         if not ns or ns == b"default":
             # Default namespace: use "table,rowkey,"
-            rq.scan.start_row = tb + b"," + rowkey + b"," 
+            rq.scan.start_row = tb + b"," + rowkey + b","
         else:
             # Namespaced: use "ns:table,rowkey,"
-            rq.scan.start_row = ns + b":" + tb + b"," + rowkey + b"," 
+            rq.scan.start_row = ns + b":" + tb + b"," + rowkey + b","
 
         rq.scan.column.append(Column(family=b"info"))
         # If caller provided empty rowkey, perform a forward bounded scan across the table's
@@ -32,9 +31,9 @@ class MetaRsConnection(RsConnection):
         if not rowkey:
             # scan from table prefix to table prefix + high-byte to capture all meta rows for this table
             if not ns or ns == b"default":
-                rq.scan.start_row = tb + b"," 
+                rq.scan.start_row = tb + b","
             else:
-                rq.scan.start_row = ns + b":" + tb + b"," 
+                rq.scan.start_row = ns + b":" + tb + b","
             rq.scan.stop_row = rq.scan.start_row + b"\xff"
             rq.scan.reversed = False
             rq.number_of_rows = 100

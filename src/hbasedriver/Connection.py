@@ -9,8 +9,7 @@ from google.protobuf import message
 from hbasedriver.client.admin import Admin
 from hbasedriver.common.table_name import TableName
 from hbasedriver.protobuf_py.RPC_pb2 import ConnectionHeader, RequestHeader, ResponseHeader
-from hbasedriver.exceptions.RemoteException import RemoteException
-from hbasedriver.exceptions.RemoteException import TableExistsException
+from hbasedriver.exceptions.RemoteException import RemoteException, TableExistsException
 from hbasedriver.response import response_types
 from hbasedriver.util import to_varint, decoder
 

@@ -421,7 +421,7 @@ Legacy single-node dev workflow (still available):
 ./scripts/run_tests_docker.sh
 ```
 
-See TEST_GUIDE.md and DEV_ENV.md for full documentation and troubleshooting steps.
+See [TEST_GUIDE.md](docs/TEST_GUIDE.md) and [DEV_ENV.md](docs/DEV_ENV.md) for full documentation and troubleshooting steps.
 
 ## Documentation
 
@@ -429,7 +429,9 @@ See TEST_GUIDE.md and DEV_ENV.md for full documentation and troubleshooting step
 - [Advanced Usage](docs/advanced_usage.md) - Advanced features and patterns
 - [Performance Guide](docs/performance_guide.md) - Performance tuning and optimization
 - [Troubleshooting](docs/troubleshooting.md) - Common issues and solutions
+- [Migration Guide](docs/migration_guide.md) - Migration from Java HBase, Happybase, and Thrift clients
 - [Migration from happybase](docs/migration_from_happybase.md) - Guide for migrating from happybase/happybase-thrift
+- [中文介绍](docs/中文介绍.md) - 中文文档介绍 | Chinese Introduction
 
 ## License
 
