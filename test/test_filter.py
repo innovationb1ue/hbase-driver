@@ -897,6 +897,266 @@ class TestMultipleColumnPrefixFilter:
 
 
 # ============================================================================
+# SingleColumnValueFilter with Large Dataset & Multiple Regions
+# ============================================================================
+
+@pytest.fixture(scope="module")
+def scvf_large_table():
+    """Create a table with split keys and larger dataset for SCVF testing."""
+    import sys
+    print("\n[scvf_large_table fixture] Starting setup...", file=sys.stderr, flush=True)
+
+    conf = {"hbase.zookeeper.quorum": ZK_ADDR}
+    client = Client(conf)
+    admin = client.get_admin()
+    table_name = TableName.value_of(b"default", b"test_scvf_large")
+
+    # Clean up if exists
+    try:
+        if admin.table_exists(table_name):
+            admin.disable_table(table_name)
+            admin.delete_table(table_name)
+            time.sleep(1)
+    except Exception:
+        pass
+
+    # Create table with split keys to create multiple regions
+    # Split keys will divide the data: user_000 to user_049, user_050 to user_099, user_100 to user_149, etc.
+    cf = ColumnFamilySchema()
+    cf.name = b"cf1"
+    cf2 = ColumnFamilySchema()
+    cf2.name = b"cf2"
+
+    split_keys = [b'user_050', b'user_100', b'user_150']
+    admin.create_table(table_name, [cf, cf2], split_keys=split_keys)
+    time.sleep(2)
+
+    table = client.get_table(table_name.ns, table_name.tb)
+
+    # Insert larger dataset with 50 users, each with an age column
+    # Age ranges from 18 to 67
+    test_data = []
+    for i in range(50):
+        row_key = f'user_{i:03d}'.encode('utf-8')
+        name = f'User{i:03d}'.encode('utf-8')
+        age = str(18 + i).encode('utf-8')  # Ages 18 to 67
+        test_data.append((row_key, b'cf1', b'name', name))
+        test_data.append((row_key, b'cf1', b'age', age))
+        test_data.append((row_key, b'cf2', b'dept', f'Department{i % 5}'.encode('utf-8')))
+
+    for rowkey, family, qualifier, value in test_data:
+        table.put(Put(rowkey).add_column(family, qualifier, value))
+
+    print(f"[scvf_large_table fixture] Inserted {len(test_data)} cells for 50 rows", file=sys.stderr, flush=True)
+    time.sleep(1)
+
+    yield table
+
+    # Cleanup
+    try:
+        admin.disable_table(table_name)
+        admin.delete_table(table_name)
+    except Exception:
+        pass
+
+
+class TestSingleColumnValueFilterLargeDataset:
+    """Test SingleColumnValueFilter with a larger dataset across multiple regions."""
+
+    def test_scvf_less_than_middle(self, scvf_large_table):
+        """Test SCVF with LESS than a value in the middle of the age range."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.LESS,
+            comparator=BinaryComparator(b'40')
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1').add_family(b'cf2')
+        results = list(scvf_large_table.scan(scan))
+
+        # Users with age < 40 are user_000 (18) through user_021 (39)
+        row_keys = [r.rowkey for r in results]
+        expected_users = [f'user_{i:03d}'.encode('utf-8') for i in range(22)]  # 0 to 21
+
+        for expected in expected_users:
+            assert expected in row_keys, f"Expected {expected} to be in results"
+
+        # Verify boundary condition - user_022 (age 40) should NOT be in results
+        assert b'user_022' not in row_keys
+
+    def test_scvf_greater_than_middle(self, scvf_large_table):
+        """Test SCVF with GREATER than a value in the middle of the age range."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.GREATER,
+            comparator=BinaryComparator(b'40')
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1').add_family(b'cf2')
+        results = list(scvf_large_table.scan(scan))
+
+        # Users with age > 40 are user_023 (41) through user_049 (67)
+        row_keys = [r.rowkey for r in results]
+        expected_users = [f'user_{i:03d}'.encode('utf-8') for i in range(23, 50)]  # 23 to 49
+
+        for expected in expected_users:
+            assert expected in row_keys, f"Expected {expected} to be in results"
+
+        # Verify boundary condition - user_022 (age 40) should NOT be in results
+        assert b'user_022' not in row_keys
+
+    def test_scvf_between_boundaries(self, scvf_large_table):
+        """Test SCVF filtering users within a specific age range."""
+        # Filter for age >= 30 AND age <= 45
+        filter_list = FilterList(
+            operator=FilterList.Operator.MUST_PASS_ALL,
+            filters=[
+                SingleColumnValueFilter(
+                    column_family=b'cf1',
+                    column_qualifier=b'age',
+                    compare_operator=CompareOperator.GREATER_OR_EQUAL,
+                    comparator=BinaryComparator(b'30')
+                ),
+                SingleColumnValueFilter(
+                    column_family=b'cf1',
+                    column_qualifier=b'age',
+                    compare_operator=CompareOperator.LESS_OR_EQUAL,
+                    comparator=BinaryComparator(b'45')
+                )
+            ]
+        )
+
+        scan = Scan(start_row=b'user_000').set_filter(filter_list).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        # Users with age between 30 and 45 inclusive are user_012 (30) through user_027 (45)
+        row_keys = [r.rowkey for r in results]
+        expected_users = [f'user_{i:03d}'.encode('utf-8') for i in range(12, 28)]  # 12 to 27
+
+        assert len(row_keys) == len(expected_users), f"Expected {len(expected_users)} results, got {len(row_keys)}"
+
+        for expected in expected_users:
+            assert expected in row_keys, f"Expected {expected} to be in results"
+
+    def test_scvf_equal_across_regions(self, scvf_large_table):
+        """Test SCVF equality filter that might match rows in different regions."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.EQUAL,
+            comparator=BinaryComparator(b'35')  # This is user_017, which is in first region
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        row_keys = [r.rowkey for r in results]
+        assert row_keys == [b'user_017'], f"Expected [b'user_017'], got {row_keys}"
+
+    def test_scvf_equal_second_region(self, scvf_large_table):
+        """Test SCVF equality filter matching a row in the second region."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.EQUAL,
+            comparator=BinaryComparator(b'55')  # This is user_037, which should be in second region (>= user_050 split key... wait, user_037 is age 55)
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        row_keys = [r.rowkey for r in results]
+        assert row_keys == [b'user_037'], f"Expected [b'user_037'], got {row_keys}"
+
+    def test_scvf_equal_third_region(self, scvf_large_table):
+        """Test SCVF equality filter matching a row in the third region."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.EQUAL,
+            comparator=BinaryComparator(b'65')  # This is user_047, which is in third region (>= user_150 split key... wait, need to recalculate)
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        row_keys = [r.rowkey for r in results]
+        assert row_keys == [b'user_047'], f"Expected [b'user_047'], got {row_keys}"
+
+    def test_scvf_not_equal(self, scvf_large_table):
+        """Test SCVF NOT_EQUAL operator."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.NOT_EQUAL,
+            comparator=BinaryComparator(b'30')
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        row_keys = [r.rowkey for r in results]
+
+        # user_012 (age 30) should NOT be in results
+        assert b'user_012' not in row_keys
+
+        # Others should be in results
+        assert b'user_000' in row_keys  # age 18
+        assert b'user_049' in row_keys  # age 67
+
+    def test_scvf_less_or_equal_boundary(self, scvf_large_table):
+        """Test SCVF LESS_OR_EQUAL at a boundary."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.LESS_OR_EQUAL,
+            comparator=BinaryComparator(b'50')
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        row_keys = [r.rowkey for r in results]
+        expected_users = [f'user_{i:03d}'.encode('utf-8') for i in range(33)]  # 0 to 32 (age 18 to 50)
+
+        for expected in expected_users:
+            assert expected in row_keys, f"Expected {expected} to be in results"
+
+        # user_033 (age 51) should NOT be in results
+        assert b'user_033' not in row_keys
+
+    def test_scvf_greater_or_equal_boundary(self, scvf_large_table):
+        """Test SCVF GREATER_OR_EQUAL at a boundary."""
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.GREATER_OR_EQUAL,
+            comparator=BinaryComparator(b'50')
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        row_keys = [r.rowkey for r in results]
+        expected_users = [f'user_{i:03d}'.encode('utf-8') for i in range(32, 50)]  # 32 to 49 (age 50 to 67)
+
+        for expected in expected_users:
+            assert expected in row_keys, f"Expected {expected} to be in results"
+
+        # user_031 (age 49) should NOT be in results
+        assert b'user_031' not in row_keys
+
+    def test_scvf_scan_across_region_boundaries(self, scvf_large_table):
+        """Test SCVF scan that crosses region boundaries."""
+        # This filter will match rows in multiple regions
+        filter_ = SingleColumnValueFilter(
+            column_family=b'cf1',
+            column_qualifier=b'age',
+            compare_operator=CompareOperator.LESS_OR_EQUAL,
+            comparator=BinaryComparator(b'67')  # All rows should match (max age is 67)
+        )
+        scan = Scan(start_row=b'user_000').set_filter(filter_).add_family(b'cf1')
+        results = list(scvf_large_table.scan(scan))
+
+        # All 50 users should be in results
+        assert len(results) == 50, f"Expected 50 results, got {len(results)}"
+
+
+# ============================================================================
 # TimestampsFilter Tests
 # ============================================================================
 

@@ -110,17 +110,17 @@ class SingleColumnValueFilter(FilterBase):
 
         # Compare using the operator
         if self.compare_operator == CompareOperator.LESS:
-            match = compare_result <= 0
-        elif self.compare_operator == CompareOperator.LESS_OR_EQUAL:
             match = compare_result < 0
+        elif self.compare_operator == CompareOperator.LESS_OR_EQUAL:
+            match = compare_result <= 0
         elif self.compare_operator == CompareOperator.EQUAL:
             match = compare_result == 0
         elif self.compare_operator == CompareOperator.NOT_EQUAL:
             match = compare_result != 0
         elif self.compare_operator == CompareOperator.GREATER_OR_EQUAL:
-            match = compare_result > 0
-        elif self.compare_operator == CompareOperator.GREATER:
             match = compare_result >= 0
+        elif self.compare_operator == CompareOperator.GREATER:
+            match = compare_result > 0
         else:
             match = False
 
