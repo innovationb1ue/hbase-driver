@@ -5,9 +5,12 @@ from hbasedriver.client.result_scanner import ResultScanner
 from hbasedriver.client.cluster_connection import ClusterConnection
 from hbasedriver.connection.connection_pool import ConnectionPool
 from hbasedriver.meta_server import MetaRsConnection
+from hbasedriver.model.row import Row
 from hbasedriver.operations.delete import Delete
 from hbasedriver.operations.get import Get
 from hbasedriver.operations.scan import Scan
+from hbasedriver.operations.append import Append
+from hbasedriver.operations.row_mutations import RowMutations
 from hbasedriver.region import Region
 from hbasedriver.regionserver import RsConnection
 from hbasedriver.table_name import TableName
@@ -15,6 +18,8 @@ from hbasedriver.zk import locate_meta_region
 from hbasedriver.operations.put import Put
 from hbasedriver.operations.batch import Batch, BatchGet, BatchPut
 from hbasedriver.operations.increment import Increment, CheckAndPut
+from hbasedriver.protobuf_py.HBase_pb2 import CompareType
+from hbasedriver.protobuf_py.Client_pb2 import MutationProto
 
 if TYPE_CHECKING:
     from hbasedriver.model import Row
@@ -125,6 +130,58 @@ class Table:
         region: Region = self.locate_target_region(get.rowkey)
         conn = self.get_rs_connection(region)
         return conn.get(region.region_encoded, get)
+
+    def exists(self, get: Get) -> bool:
+        """Check if a row exists without fetching data.
+
+        This is a server-side existence check that only checks if the row
+        (or specified columns) exist without returning the actual data.
+
+        Example:
+            >>> # Check if entire row exists
+            >>> get = Get(b"row1")
+            >>> if table.exists(get):
+            ...     print("Row exists")
+            >>>
+            >>> # Check if specific columns exist
+            >>> get = Get(b"row2").add_column(b"cf", b"col")
+            >>> if table.exists(get):
+            ...     print("Column exists")
+
+        Args:
+            get: Get operation specifying row key and optionally columns to check
+
+        Returns:
+            True if row/columns exist, False otherwise
+        """
+        get.set_check_existence_only(True)
+        region: Region = self.locate_target_region(get.rowkey)
+        conn = self.get_rs_connection(region)
+        row = conn.get(region.region_encoded, get)
+        return row is not None and row.exists()
+
+    def exists_all(self, gets: list[Get]) -> dict[bytes, bool]:
+        """Check existence of multiple rows.
+
+        This checks if each row (or specified columns) exists without
+        fetching the actual data.
+
+        Example:
+            >>> gets = [Get(b"row1"), Get(b"row2"), Get(b"row3")]
+            >>> results = table.exists_all(gets)
+            >>> for rowkey, exists in results.items():
+            ...     print(f"{rowkey}: {'exists' if exists else 'not found'}")
+
+        Args:
+            gets: List of Get operations specifying rows/columns to check
+
+        Returns:
+            Dictionary mapping row keys to existence boolean
+        """
+        results: dict[bytes, bool] = {}
+        for get in gets:
+            results[get.rowkey] = self.exists(get)
+        return results
 
     def delete(self, delete: Delete) -> bool:
         """Delete a row or specific columns from the table.
@@ -289,10 +346,10 @@ class Table:
 
     def check_and_put(self, check_and_put: CheckAndPut) -> bool:
         """
-        Perform a conditional put operation.
+        Perform a conditional put operation (server-side atomic).
 
-        This operation checks if a column has a specific value before performing a put.
-        If the check passes, the put is performed atomically.
+        This operation atomically checks if a column has a specific value
+        before performing a put. If the check passes, the put is performed.
 
         Example:
             cap = CheckAndPut(b'row1')
@@ -305,9 +362,6 @@ class Table:
             else:
                 print("Check failed")
 
-        Note: This is a client-side implementation that performs read-then-write.
-        For true atomic check-and-put, HBase server support is required.
-
         Args:
             check_and_put: CheckAndPut operation
 
@@ -317,37 +371,111 @@ class Table:
         if not check_and_put.validate():
             raise ValueError("Invalid CheckAndPut operation")
 
-        # Read current value
-        get = Get(check_and_put.rowkey)
-        get.add_column(check_and_put.check_family, check_and_put.check_qualifier)
-        row = self.get(get)
+        region: Region = self.locate_target_region(check_and_put.rowkey)
+        conn = self.get_rs_connection(region)
 
-        # Check if condition is met
-        check_passed = False
+        # Build column values for the put
+        column_values = []
+        for family, cells in check_and_put.put_operation.family_cells.items():
+            qualifiers = [(cell.qualifier, cell.value) for cell in cells]
+            column_values.append((family, qualifiers))
 
-        if check_and_put.check_value is None:
-            # Check for non-existence
-            if row is None or row.get(check_and_put.check_family, check_and_put.check_qualifier) is None:
-                check_passed = True
-        else:
-            # Check for specific value
-            if row is not None:
-                current_value = row.get(check_and_put.check_family, check_and_put.check_qualifier)
-                if check_and_put.compare_op == "EQUAL":
-                    check_passed = (current_value == check_and_put.check_value)
-                elif check_and_put.compare_op == "NOT_EQUAL":
-                    check_passed = (current_value != check_and_put.check_value)
+        # Map compare operator to CompareType
+        compare_type = CompareType.EQUAL
+        if check_and_put.compare_op == "NOT_EQUAL":
+            compare_type = CompareType.NOT_EQUAL
+        elif check_and_put.compare_op == "LESS":
+            compare_type = CompareType.LESS
+        elif check_and_put.compare_op == "LESS_OR_EQUAL":
+            compare_type = CompareType.LESS_OR_EQUAL
+        elif check_and_put.compare_op == "GREATER":
+            compare_type = CompareType.GREATER
+        elif check_and_put.compare_op == "GREATER_OR_EQUAL":
+            compare_type = CompareType.GREATER_OR_EQUAL
 
-        # Perform put if check passed
-        if check_passed:
-            self.put(check_and_put.put_operation)
-            return True
+        success, _ = conn.check_and_mutate(
+            region.region_encoded,
+            check_and_put.rowkey,
+            check_and_put.check_family,
+            check_and_put.check_qualifier,
+            check_and_put.check_value,
+            compare_type,
+            MutationProto.MutationType.PUT,
+            column_values
+        )
+        return success
 
-        return False
+    def check_and_delete(
+        self,
+        rowkey: bytes,
+        check_family: bytes,
+        check_qualifier: bytes,
+        check_value: bytes | None,
+        delete: Delete,
+        compare_op: str = "EQUAL"
+    ) -> bool:
+        """
+        Perform a conditional delete operation (server-side atomic).
+
+        This operation atomically checks if a column has a specific value
+        before performing a delete. If the check passes, the delete is performed.
+
+        Example:
+            delete = Delete(b'row1').add_column(b'cf', b'col')
+            success = table.check_and_delete(
+                b'row1', b'cf', b'lock', b'', delete
+            )
+            if success:
+                print("Delete succeeded")
+
+        Args:
+            rowkey: Row key
+            check_family: Column family to check
+            check_qualifier: Column qualifier to check
+            check_value: Expected value (None checks for non-existence)
+            delete: Delete operation to perform if check passes
+            compare_op: Comparison operator ('EQUAL', 'NOT_EQUAL', etc.)
+
+        Returns:
+            True if check passed and delete was performed, False otherwise
+        """
+        region: Region = self.locate_target_region(rowkey)
+        conn = self.get_rs_connection(region)
+
+        # Build column values for the delete
+        column_values = []
+        for family, cells in delete.family_cells.items():
+            qualifiers = [(cell.qualifier, b'') for cell in cells]
+            column_values.append((family, qualifiers))
+
+        # Map compare operator to CompareType
+        compare_type = CompareType.EQUAL
+        if compare_op == "NOT_EQUAL":
+            compare_type = CompareType.NOT_EQUAL
+        elif compare_op == "LESS":
+            compare_type = CompareType.LESS
+        elif compare_op == "LESS_OR_EQUAL":
+            compare_type = CompareType.LESS_OR_EQUAL
+        elif compare_op == "GREATER":
+            compare_type = CompareType.GREATER
+        elif compare_op == "GREATER_OR_EQUAL":
+            compare_type = CompareType.GREATER_OR_EQUAL
+
+        success, _ = conn.check_and_mutate(
+            region.region_encoded,
+            rowkey,
+            check_family,
+            check_qualifier,
+            check_value,
+            compare_type,
+            MutationProto.MutationType.DELETE,
+            column_values
+        )
+        return success
 
     def increment(self, increment: Increment) -> int:
         """
-        Atomically increment a counter value.
+        Atomically increment a counter value (server-side atomic).
 
         This operation atomically increments a column value by a specified amount.
         If the column does not exist, it is created with the increment value.
@@ -359,55 +487,157 @@ class Table:
             new_value = table.increment(inc)
             print(f"New counter value: {new_value}")
 
-        Note: This is a client-side implementation that performs read-modify-write.
-        For true atomic increment, HBase server support is required.
-
         Args:
             increment: Increment operation
 
         Returns:
-            New counter value after increment
+            New counter value after increment (for single column),
+            or the last incremented value (for multiple columns)
         """
-        # Read current value
-        get = increment.to_get()
-        row = self.get(get)
+        region: Region = self.locate_target_region(increment.rowkey)
+        conn = self.get_rs_connection(region)
 
-        new_values: dict[bytes, int] = {}
-
-        # Process each increment
+        # Build column values for the increment
+        column_values = []
         for family, cells in increment.family_cells.items():
+            qualifiers = []
             for cell in cells:
-                current_value = 0
-
-                # Read current value if exists
-                if row is not None:
-                    existing = row.get(family, cell.qualifier)
-                    if existing is not None:
-                        try:
-                            current_value = int(existing)
-                        except (ValueError, TypeError):
-                            current_value = 0
-
-                # Calculate new value
                 try:
                     amount = int(cell.value.decode('utf-8'))
                 except (ValueError, TypeError, UnicodeDecodeError):
                     amount = 1
+                qualifiers.append((cell.qualifier, amount))
+            column_values.append((family, qualifiers))
 
-                new_value = current_value + amount
-                new_values[(family, cell.qualifier)] = new_value
+        row = conn.increment(
+            region.region_encoded,
+            increment.rowkey,
+            column_values,
+            return_results=increment.return_results
+        )
 
-        # Write new values
-        put = Put(increment.rowkey)
-        for (family, qualifier), new_value in new_values.items():
-            put.add_column(family, qualifier, str(new_value).encode())
+        if row is None:
+            return 0
 
-        self.put(put)
-
-        # Return the last incremented value (or all if multiple)
-        if new_values:
-            return list(new_values.values())[-1]
+        # Extract the first (or last) counter value
+        for family, cells in increment.family_cells.items():
+            for cell in cells:
+                value = row.get(family, cell.qualifier)
+                if value is not None:
+                    # Decode 8-byte big-endian integer
+                    return int.from_bytes(value, byteorder='big', signed=True)
         return 0
+
+    def append(self, append: Append) -> Row | None:
+        """
+        Atomically append to column values (server-side atomic).
+
+        This operation atomically appends data to the end of existing column values.
+        If the column does not exist, the append value becomes the initial value.
+
+        Example:
+            append = Append(b'row1')
+            append.add_column(b'cf', b'suffix_col', b'_suffix')
+            append.add_column(b'cf', b'tags', b',new_tag')
+
+            result = table.append(append)
+            new_value = result.get(b'cf', b'suffix_col')
+
+        Args:
+            append: Append operation
+
+        Returns:
+            Row containing the new values after append, or None if return_results is False
+        """
+        region: Region = self.locate_target_region(append.rowkey)
+        conn = self.get_rs_connection(region)
+
+        # Build column values for the append
+        column_values = []
+        for family, cells in append.family_cells.items():
+            qualifiers = [(cell.qualifier, cell.value) for cell in cells]
+            column_values.append((family, qualifiers))
+
+        return conn.append(
+            region.region_encoded,
+            append.rowkey,
+            column_values,
+            return_results=append.return_results
+        )
+
+    def mutate_row(self, row_mutations: 'RowMutations') -> bool:
+        """Execute multiple mutations atomically on a single row.
+
+        This operation combines multiple mutations (Put, Delete, Increment, Append)
+        into a single atomic operation. All mutations are applied together or none are.
+
+        Example:
+            >>> from hbasedriver.operations import RowMutations, Put, Delete
+            >>>
+            >>> rm = RowMutations(b'row1')
+            >>> rm.add(Put(b'row1').add_column(b'cf', b'col1', b'value1'))
+            >>> rm.add(Delete(b'row1').add_column(b'cf', b'col2'))
+            >>>
+            >>> success = table.mutate_row(rm)
+            >>> if success:
+            ...     print("All mutations applied atomically")
+
+        Args:
+            row_mutations: RowMutations object containing the mutations
+
+        Returns:
+            True if all mutations were applied successfully
+
+        Raises:
+            ValueError: If no mutations are provided
+        """
+        if not row_mutations:
+            raise ValueError("RowMutations must contain at least one mutation")
+
+        region: Region = self.locate_target_region(row_mutations.rowkey)
+        conn = self.get_rs_connection(region)
+
+        # Build mutation list for the server
+        mutations = []
+        for mutation in row_mutations.get_mutations():
+            column_values = []
+
+            if isinstance(mutation, Put):
+                mutation_type = MutationProto.MutationType.PUT
+                for family, cells in mutation.family_cells.items():
+                    qualifiers = [(cell.qualifier, cell.value) for cell in cells]
+                    column_values.append((family, qualifiers))
+            elif isinstance(mutation, Delete):
+                mutation_type = MutationProto.MutationType.DELETE
+                for family, cells in mutation.family_cells.items():
+                    qualifiers = [(cell.qualifier, b'') for cell in cells]
+                    column_values.append((family, qualifiers))
+            elif isinstance(mutation, Increment):
+                mutation_type = MutationProto.MutationType.INCREMENT
+                for family, cells in mutation.family_cells.items():
+                    qualifiers = []
+                    for cell in cells:
+                        try:
+                            amount = int(cell.value.decode('utf-8'))
+                        except (ValueError, TypeError, UnicodeDecodeError):
+                            amount = 1
+                        qualifiers.append((cell.qualifier, amount))
+                    column_values.append((family, qualifiers))
+            elif isinstance(mutation, Append):
+                mutation_type = MutationProto.MutationType.APPEND
+                for family, cells in mutation.family_cells.items():
+                    qualifiers = [(cell.qualifier, cell.value) for cell in cells]
+                    column_values.append((family, qualifiers))
+            else:
+                raise ValueError(f"Unsupported mutation type: {type(mutation).__name__}")
+
+            mutations.append((mutation_type, column_values))
+
+        return conn.mutate_row(
+            region.region_encoded,
+            row_mutations.rowkey,
+            mutations
+        )
 
     def get_rs_connection(self, region: Region) -> RsConnection:
         """Get a connection to the region server from the connection pool.

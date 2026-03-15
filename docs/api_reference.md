@@ -46,6 +46,30 @@ table = client.get_table(b"default", b"my_table")
 table = client.get_table(None, b"my_table")
 ```
 
+#### `get_buffered_mutator(ns: bytes | None, tb: bytes, params: BufferedMutatorParams = None) -> BufferedMutator`
+
+Returns a `BufferedMutator` for efficient bulk writes with automatic buffering and background flushing.
+
+```python
+from hbasedriver.client.buffered_mutator import BufferedMutatorParams
+
+params = BufferedMutatorParams(
+    write_buffer_size=2*1024*1024,  # 2MB buffer
+    write_flush_interval=5.0        # Flush every 5 seconds
+)
+with client.get_buffered_mutator(b"default", b"my_table", params) as mutator:
+    mutator.mutate(Put(b"row1").add_column(b"cf", b"col", b"value"))
+    # Auto-flushes on close
+```
+
+#### `close()`
+
+Close the client and release all resources.
+
+```python
+client.close()
+```
+
 #### `create_table(ns: bytes, tb: bytes, column_families: List[ColumnFamilyDescriptor], split_keys: List[bytes] = None)`
 
 Creates a new table with the specified column families.
@@ -155,6 +179,28 @@ scan = Scan(b"start_row", b"end_row")
 scanner = table.get_scanner(scan)
 ```
 
+#### `exists(get: Get) -> bool`
+
+Check if a row exists without fetching data (server-side existence check).
+
+```python
+# Check if entire row exists
+exists = table.exists(Get(b"row1"))
+
+# Check if specific column exists
+exists = table.exists(Get(b"row1").add_column(b"cf", b"col"))
+```
+
+#### `exists_all(gets: List[Get]) -> Dict[bytes, bool]`
+
+Check existence of multiple rows at once.
+
+```python
+gets = [Get(b"row1"), Get(b"row2"), Get(b"row3")]
+results = table.exists_all(gets)
+# Returns: {b"row1": True, b"row2": True, b"row3": False}
+```
+
 #### `scan_page(scan: Scan, page_size: int) -> Tuple[List[Row], bytes | None]`
 
 Performs stateless pagination, returning rows and a resume key.
@@ -164,6 +210,68 @@ rows, resume_key = table.scan_page(Scan(), 10)
 if resume_key:
     # Continue from where we left off
     next_scan = Scan(start_row=resume_key, include_start_row=False)
+```
+
+#### `check_and_put(check_and_put: CheckAndPut) -> bool`
+
+Perform a conditional put operation (server-side atomic).
+
+```python
+from hbasedriver.operations.increment import CheckAndPut
+
+cap = CheckAndPut(b"row1")
+cap.set_check(b"cf", b"lock", b"")  # Check if lock is empty
+cap.set_put(Put(b"row1").add_column(b"cf", b"data", b"value"))
+success = table.check_and_put(cap)
+```
+
+#### `check_and_delete(rowkey, check_family, check_qualifier, check_value, delete, compare_op) -> bool`
+
+Perform a conditional delete operation (server-side atomic).
+
+```python
+delete = Delete(b"row1").add_column(b"cf", b"old_data")
+success = table.check_and_delete(
+    b"row1", b"cf", b"lock", b"", delete  # Delete if lock is empty
+)
+```
+
+#### `increment(increment: Increment) -> int`
+
+Atomically increment a counter value (server-side atomic).
+
+```python
+from hbasedriver.operations.increment import Increment
+
+inc = Increment(b"row1")
+inc.add_column(b"cf", b"counter", 5)
+new_value = table.increment(inc)  # Returns new value
+```
+
+#### `append(append: Append) -> Row | None`
+
+Atomically append to column values (server-side atomic).
+
+```python
+from hbasedriver.operations.append import Append
+
+append = Append(b"row1")
+append.add_column(b"cf", b"tags", b",new_tag")
+result = table.append(append)
+new_value = result.get(b"cf", b"tags")
+```
+
+#### `mutate_row(row_mutations: RowMutations) -> bool`
+
+Execute multiple mutations atomically on a single row.
+
+```python
+from hbasedriver.operations import RowMutations, Put, Delete
+
+rm = RowMutations(b"row1")
+rm.add(Put(b"row1").add_column(b"cf", b"status", b"active"))
+rm.add(Delete(b"row1").add_column(b"cf", b"old_field"))
+success = table.mutate_row(rm)
 ```
 
 ## Admin
@@ -312,6 +420,73 @@ from hbasedriver.operations.delete import Delete
 delete = Delete(b"rowkey")
 delete.add_column(b"cf", b"qualifier")
 delete.add_family(b"cf")
+```
+
+### Increment
+
+```python
+from hbasedriver.operations.increment import Increment
+
+inc = Increment(b"rowkey")
+inc.add_column(b"cf", b"counter", 1)  # Increment by 1
+inc.set_return_results(True)  # Return new value
+```
+
+### Append
+
+```python
+from hbasedriver.operations.append import Append
+
+append = Append(b"rowkey")
+append.add_column(b"cf", b"tags", b",new_tag")
+append.set_return_results(True)  # Return new value
+```
+
+### CheckAndPut
+
+```python
+from hbasedriver.operations.increment import CheckAndPut
+
+cap = CheckAndPut(b"rowkey")
+cap.set_check(b"cf", b"lock", b"")  # Check if lock is empty
+cap.set_put(Put(b"rowkey").add_column(b"cf", b"data", b"value"))
+```
+
+### RowMutations
+
+```python
+from hbasedriver.operations.row_mutations import RowMutations
+
+rm = RowMutations(b"rowkey")
+rm.add(Put(b"rowkey").add_column(b"cf", b"col1", b"value1"))
+rm.add(Delete(b"rowkey").add_column(b"cf", b"col2"))
+```
+
+### BufferedMutator
+
+```python
+from hbasedriver.client.buffered_mutator import BufferedMutatorParams
+
+# Create with custom parameters
+params = BufferedMutatorParams(
+    write_buffer_size=2*1024*1024,  # 2MB buffer
+    write_flush_interval=5.0,        # Flush every 5 seconds
+    max_flush_threads=4
+)
+mutator = client.get_buffered_mutator(b"default", b"my_table", params)
+
+# Add mutations
+mutator.mutate(Put(b"row1").add_column(b"cf", b"col", b"value"))
+mutator.mutate_all([Put(b"row2"), Put(b"row3")])
+
+# Explicit flush
+mutator.flush()
+
+# Get stats
+stats = mutator.get_current_buffer_size()
+
+# Close when done
+mutator.close()
 ```
 
 ## Filters

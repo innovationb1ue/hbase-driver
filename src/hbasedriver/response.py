@@ -1,4 +1,4 @@
-from hbasedriver.protobuf_py.Client_pb2 import GetResponse, MutateResponse, ScanResponse
+from hbasedriver.protobuf_py.Client_pb2 import GetResponse, MutateResponse, ScanResponse, MultiResponse
 from hbasedriver.protobuf_py.Master_pb2 import (
     GetTableDescriptorsResponse,
     ListNamespacesResponse,
@@ -30,4 +30,5 @@ response_types = {
     "Get": GetResponse,
     "Mutate": MutateResponse,
     "Scan": ScanResponse,
+    "Multi": MultiResponse,
 }

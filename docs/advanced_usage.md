@@ -8,6 +8,8 @@ This guide covers advanced features and patterns for using python-hbase-driver.
 - [Advanced Scanning](#advanced-scanning)
 - [Filtering](#filtering)
 - [Batch Operations](#batch-operations)
+- [Atomic Operations](#atomic-operations)
+- [BufferedMutator (Bulk Writes)](#bufferedmutator-bulk-writes)
 - [Region Caching](#region-caching)
 - [Error Handling](#error-handling)
 - [Performance Tuning](#performance-tuning)
@@ -146,7 +148,182 @@ for row in scanner:
 
 ## Batch Operations
 
-### Bulk Inserts
+### BufferedMutator (Bulk Writes)
+
+For high-throughput bulk writes, use `BufferedMutator` which buffers mutations in memory and flushes them in batches:
+
+```python
+from hbasedriver.client.client import Client
+from hbasedriver.client.buffered_mutator import BufferedMutatorParams
+from hbasedriver.operations.put import Put
+
+client = Client({"hbase.zookeeper.quorum": "localhost:2181"})
+
+# Create with custom parameters
+params = BufferedMutatorParams(
+    write_buffer_size=2*1024*1024,  # 2MB buffer
+    write_flush_interval=5.0        # Flush every 5 seconds
+)
+
+# Using context manager - auto-flush on close
+with client.get_buffered_mutator(b"default", b"my_table", params) as mutator:
+    for i in range(10000):
+        put = Put(f"row{i}".encode()).add_column(b"cf", b"data", f"value{i}".encode())
+        mutator.mutate(put)
+    # Auto-flushes when exiting context
+```
+
+### Manual Flush Control
+
+```python
+mutator = client.get_buffered_mutator(b"default", b"my_table")
+
+# Add single mutation
+mutator.mutate(Put(b"row1").add_column(b"cf", b"col", b"value"))
+
+# Add multiple mutations at once
+puts = [Put(f"row{i}".encode()).add_column(b"cf", b"col", f"value{i}".encode())
+        for i in range(100)]
+mutator.mutate_all(puts)
+
+# Explicit flush
+mutator.flush()
+
+# Check buffer size
+buffer_size = mutator.get_current_buffer_size()
+
+# Close when done
+mutator.close()
+```
+
+### Exception Handling for Bulk Writes
+
+```python
+class MyExceptionListener:
+    def on_exception(self, mutations, exception):
+        print(f"Failed to write {len(mutations)} mutations: {exception}")
+        # Log to file or retry
+        return True  # Continue processing
+
+params = BufferedMutatorParams(
+    write_buffer_size=1024*1024,
+    exception_listener=MyExceptionListener()
+)
+
+with client.get_buffered_mutator(b"default", b"my_table", params) as mutator:
+    # Mutations that fail will trigger the exception listener
+    mutator.mutate(Put(b"row1").add_column(b"cf", b"col", b"value"))
+```
+
+## Atomic Operations
+
+### Check and Put
+
+Atomically check a condition and perform a put if the condition passes:
+
+```python
+from hbasedriver.operations.increment import CheckAndPut
+from hbasedriver.operations.put import Put
+
+cap = CheckAndPut(b"row1")
+cap.set_check(b"cf", b"lock", b"")  # Check if lock column is empty
+cap.set_put(Put(b"row1").add_column(b"cf", b"data", b"value"))
+
+success = table.check_and_put(cap)
+if success:
+    print("Put succeeded - lock was empty")
+else:
+    print("Put failed - lock was not empty")
+```
+
+### Check and Delete
+
+Atomically check a condition and perform a delete if the condition passes:
+
+```python
+from hbasedriver.operations.delete import Delete
+
+delete = Delete(b"row1").add_column(b"cf", b"old_data")
+success = table.check_and_delete(
+    b"row1", b"cf", b"lock", b"", delete  # Delete if lock is empty
+)
+```
+
+### Atomic Increment
+
+Increment counter values atomically and get the new value:
+
+```python
+from hbasedriver.operations.increment import Increment
+
+inc = Increment(b"row1")
+inc.add_column(b"cf", b"counter", 5)  # Increment by 5
+new_value = table.increment(inc)
+print(f"New counter value: {new_value}")
+
+# Multiple counters in one operation
+inc = Increment(b"stats")
+inc.add_column(b"cf", b"views", 1)
+inc.add_column(b"cf", b"clicks", 1)
+table.increment(inc)
+```
+
+### Atomic Append
+
+Append data to existing column values atomically:
+
+```python
+from hbasedriver.operations.append import Append
+
+append = Append(b"row1")
+append.add_column(b"cf", b"tags", b",python")
+append.add_column(b"cf", b"log", b"\nNew log entry")
+
+result = table.append(append)
+if result:
+    new_tags = result.get(b"cf", b"tags")
+    print(f"New tags: {new_tags}")
+```
+
+### RowMutations (Atomic Multi-Mutation)
+
+Combine multiple mutations into a single atomic operation on one row:
+
+```python
+from hbasedriver.operations import RowMutations, Put, Delete, Increment, Append
+
+rm = RowMutations(b"row1")
+rm.add(Put(b"row1").add_column(b"cf", b"status", b"active"))
+rm.add(Delete(b"row1").add_column(b"cf", b"old_field"))
+rm.add(Increment(b"row1").add_column(b"cf", b"version", 1))
+rm.add(Append(b"row1").add_column(b"cf", b"history", b";update"))
+
+success = table.mutate_row(rm)
+if success:
+    print("All mutations applied atomically")
+```
+
+### Exists Operations
+
+Check row existence without fetching data:
+
+```python
+from hbasedriver.operations.get import Get
+
+# Check if row exists
+exists = table.exists(Get(b"row1"))
+
+# Check if specific column exists
+exists = table.exists(Get(b"row1").add_column(b"cf", b"col"))
+
+# Check multiple rows at once
+gets = [Get(b"row1"), Get(b"row2"), Get(b"row3")]
+results = table.exists_all(gets)
+for rowkey, exists in results.items():
+    print(f"{rowkey}: {'exists' if exists else 'not found'}")
+```
+
+## Bulk Inserts
 
 Perform multiple puts in a loop:
 

@@ -328,38 +328,40 @@ def test_check_and_put_failure():
 
 
 def test_increment_new():
-    """Test increment on new column."""
+    """Test increment on new column (server-side atomic)."""
     conf = {"hbase.zookeeper.quorum": "hbase-zk:2181"}
     client = Client(conf)
     table = client.get_table(b"default", b"test_batch")
 
-    # Increment non-existent counter
+    # Increment non-existent counter (server-side atomic)
     inc = Increment(b"row60")
     inc.add_column(b"cf", b"counter", 5)
 
     new_value = table.increment(inc)
     assert new_value == 5
 
-    # Verify
+    # Verify - server-side stores as 8-byte big-endian integer
     get = Get(b"row60")
     get.add_column(b"cf", b"counter")
     row = table.get(get)
     assert row is not None
-    assert row.get(b"cf", b"counter") == b"5"
+    # Server-side increment stores as 8-byte long
+    stored_value = row.get(b"cf", b"counter")
+    assert int.from_bytes(stored_value, byteorder='big', signed=True) == 5
 
 
 def test_increment_existing():
-    """Test increment on existing counter."""
+    """Test increment on existing counter (server-side atomic)."""
     conf = {"hbase.zookeeper.quorum": "hbase-zk:2181"}
     client = Client(conf)
     table = client.get_table(b"default", b"test_batch")
 
-    # Set initial value
-    put = Put(b"row61")
-    put.add_column(b"cf", b"counter", b"10")
-    table.put(put)
+    # Use server-side increment to set initial value (stores as 8-byte long)
+    inc_init = Increment(b"row61")
+    inc_init.add_column(b"cf", b"counter", 10)
+    table.increment(inc_init)
 
-    # Increment
+    # Increment by 7
     inc = Increment(b"row61")
     inc.add_column(b"cf", b"counter", 7)
 
@@ -371,11 +373,12 @@ def test_increment_existing():
     get.add_column(b"cf", b"counter")
     row = table.get(get)
     assert row is not None
-    assert row.get(b"cf", b"counter") == b"17"
+    stored_value = row.get(b"cf", b"counter")
+    assert int.from_bytes(stored_value, byteorder='big', signed=True) == 17
 
 
 def test_increment_multiple():
-    """Test increment with multiple columns."""
+    """Test increment with multiple columns (server-side atomic)."""
     conf = {"hbase.zookeeper.quorum": "hbase-zk:2181"}
     client = Client(conf)
     table = client.get_table(b"default", b"test_batch")
@@ -386,16 +389,19 @@ def test_increment_multiple():
     inc.add_column(b"cf", b"counter2", 10)
 
     new_value = table.increment(inc)
-    assert new_value == 10  # Returns last incremented value
+    # Server-side returns the first counter value (not last)
+    assert new_value == 5
 
-    # Verify
+    # Verify both counters
     get = Get(b"row62")
     get.add_column(b"cf", b"counter1")
     get.add_column(b"cf", b"counter2")
     row = table.get(get)
     assert row is not None
-    assert row.get(b"cf", b"counter1") == b"5"
-    assert row.get(b"cf", b"counter2") == b"10"
+    stored1 = row.get(b"cf", b"counter1")
+    stored2 = row.get(b"cf", b"counter2")
+    assert int.from_bytes(stored1, byteorder='big', signed=True) == 5
+    assert int.from_bytes(stored2, byteorder='big', signed=True) == 10
 
 
 if __name__ == "__main__":

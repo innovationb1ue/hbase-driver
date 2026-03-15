@@ -3,6 +3,7 @@ from typing import TYPE_CHECKING
 
 from hbasedriver import zk
 from hbasedriver.client.admin import Admin
+from hbasedriver.client.buffered_mutator import BufferedMutator, BufferedMutatorParams
 from hbasedriver.client.cluster_connection import ClusterConnection
 from hbasedriver.client.table import Table
 from hbasedriver.common.table_name import TableName
@@ -155,6 +156,47 @@ class Client:
         # attach cluster connection so Table can locate regions via the cluster
         table.cluster_conn = self.cluster_connection
         return table
+
+    def get_buffered_mutator(
+        self,
+        ns: bytes | None,
+        tb: bytes,
+        params: BufferedMutatorParams | None = None
+    ) -> BufferedMutator:
+        """Get a BufferedMutator for efficient bulk write operations.
+
+        BufferedMutator buffers mutations (Put/Delete) in memory and sends
+        them to HBase in batches for better throughput. It supports:
+        - Configurable buffer size (flushes when size limit reached)
+        - Periodic background flush (configurable interval)
+        - Explicit flush on demand
+        - Auto-flush on close
+
+        Args:
+            ns: Namespace (bytes). If None, uses "default" namespace
+            tb: Table name (bytes)
+            params: Optional BufferedMutatorParams for configuration
+
+        Returns:
+            BufferedMutator instance for bulk writes
+
+        Example:
+            >>> # Using context manager (recommended)
+            >>> with client.get_buffered_mutator(b"default", b"mytable") as mutator:
+            ...     mutator.mutate(Put(b"row1").add_column(b"cf", b"col", b"value1"))
+            ...     mutator.mutate(Put(b"row2").add_column(b"cf", b"col", b"value2"))
+            ...     # Auto-flushes on close
+            >>>
+            >>> # With custom configuration
+            >>> params = BufferedMutatorParams()
+            >>> params.write_buffer_size = 4 * 1024 * 1024  # 4MB
+            >>> params.write_buffer_periodic_flush = 5000  # 5 seconds
+            >>> with client.get_buffered_mutator(b"default", b"mytable", params) as mutator:
+            ...     for i in range(10000):
+            ...         mutator.mutate(Put(f"row{i}".encode()).add_column(b"cf", b"col", b"value"))
+        """
+        table = self.get_table(ns, tb)
+        return BufferedMutator(table, params)
 
     def check_regions_online(self, ns: bytes, tb: bytes, split_keys: list[bytes]) -> None:
         """Wait for all regions of a table to come online.

@@ -49,6 +49,10 @@ from hbasedriver.protobuf_py.Master_pb2 import (
     RestoreSnapshotResponse,
     IsSnapshotDoneRequest,
 )
+from hbasedriver.protobuf_py.Admin_pb2 import (
+    CompactRegionRequest,
+    FlushRegionRequest,
+)
 from hbasedriver.protobuf_py.Snapshot_pb2 import SnapshotDescription
 from hbasedriver.Connection import Connection
 
@@ -359,3 +363,50 @@ class MasterConnection(Connection):
         """
         rq = IsBalancerEnabledRequest()
         return self.send_request(rq, "IsBalancerEnabled")
+
+    # ==================== Compaction & Flush Operations ====================
+
+    def compact_region(
+        self,
+        region: RegionSpecifier,
+        major: bool = False,
+        family: Optional[bytes] = None
+    ):
+        """Compact a region.
+
+        Args:
+            region: RegionSpecifier for the region to compact
+            major: If True, perform major compaction; otherwise minor
+            family: Optional column family to compact (if None, all families)
+        """
+        rq = CompactRegionRequest()
+        rq.region.CopyFrom(region)
+        rq.major = major
+        if family:
+            rq.family = family
+        self.send_request(rq, "CompactRegion")
+
+    def flush_region(
+        self,
+        region: RegionSpecifier,
+        family: Optional[bytes] = None,
+        if_older_than_ts: Optional[int] = None,
+        write_flush_wal_marker: bool = False
+    ):
+        """Flush a region's memstore to disk.
+
+        Args:
+            region: RegionSpecifier for the region to flush
+            family: Optional column family to flush (if None, all families)
+            if_older_than_ts: Only flush if last flush is older than this timestamp
+            write_flush_wal_marker: Write a marker to WAL about the flush
+        """
+        from hbasedriver.protobuf_py.Admin_pb2 import FlushRegionRequest
+        rq = FlushRegionRequest()
+        rq.region.CopyFrom(region)
+        if family:
+            rq.family = family
+        if if_older_than_ts is not None:
+            rq.if_older_than_ts = if_older_than_ts
+        rq.write_flush_wal_marker = write_flush_wal_marker
+        self.send_request(rq, "FlushRegion")

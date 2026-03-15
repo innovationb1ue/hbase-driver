@@ -30,6 +30,8 @@ test/
 
 **Always run tests inside the dev container**, not locally.
 
+**IMPORTANT: After implementing any new function, always run the related tests to verify the implementation works correctly.**
+
 ### Why?
 The HBase cluster runs in Docker with internal hostnames (e.g., `hbase-rs1`, `hbase-rs2`). ZooKeeper returns these internal hostnames when discovering region servers. The dev container (`hbase_dev`) is on the same Docker network and can resolve these names, but your local machine cannot.
 
@@ -87,13 +89,26 @@ docker exec hbase_dev bash        # Shell into dev container
 - Get, Put, Delete, Scan
 - Batch mutations
 - Connection pooling
+- **BufferedMutator** for efficient bulk writes (Java HBase compatible)
+  - Configurable buffer size with auto-flush
+  - Background flush thread with configurable interval
+  - Exception listener callback for failed writes
+  - Context manager support (auto-flush on close)
+
+### Server-Side Atomic Operations
+- **CheckAndPut** - atomic conditional put
+- **CheckAndDelete** - atomic conditional delete
+- **Increment** - atomic counter increment with result
+- **Append** - atomic value append with result
+- **RowMutations** - atomic multiple mutations on single row
+- **Exists/ExistsAll** - server-side existence check
 
 ### Admin Operations
 - **Table Management**: create, delete, enable, disable, truncate, describe
 - **Column Families**: add, delete, modify with options (TTL, compression, bloom filter, etc.)
 - **Namespaces**: create, delete, list
 - **Snapshots**: create, delete, list, restore, clone
-- **Regions**: split, merge, assign, unassign
+- **Regions**: split, merge, assign, unassign, compact, flush
 - **Cluster**: status, balance, balancer control, list region servers
 
 ## Code Style

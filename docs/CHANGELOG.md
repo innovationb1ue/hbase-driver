@@ -1,5 +1,54 @@
 # Changelog
 
+## v1.1.0 - 2026-03-15
+
+### New Features
+
+#### BufferedMutator (Efficient Bulk Writes)
+- Added `BufferedMutator` class for efficient bulk write operations with automatic buffering
+- Configurable buffer size (default 2MB, minimum 64KB)
+- Background flush thread with configurable flush interval
+- Exception listener callback for handling write failures
+- Context manager support with auto-flush on close
+- Methods: `mutate()`, `mutate_all()`, `flush()`, `close()`, `get_current_buffer_size()`
+
+#### Server-Side Atomic Operations
+- **CheckAndPut**: Atomic conditional put operation
+- **CheckAndDelete**: Atomic conditional delete operation
+- **Increment**: Atomic counter increment with result return
+- **Append**: Atomic value append with result return
+- All operations execute atomically on the server side, eliminating race conditions
+
+#### RowMutations (Atomic Multi-Mutation)
+- Added `RowMutations` class for combining multiple mutations (Put, Delete, Increment, Append) into a single atomic operation
+- All mutations on a row are applied together or none are applied
+- Full compatibility with Java HBase client API
+
+#### Exists Operations
+- Added `table.exists(get)` for server-side row/column existence check
+- Added `table.exists_all(gets)` for batch existence checks
+
+### Admin Enhancements
+- Added `compact_region()` for region compaction
+- Added `flush_region()` for region memstore flush
+
+### Bug Fixes
+- Fixed protobuf field naming issues (`regionAction` vs `region_action`)
+- Added `MultiResponse` to response type mapping for RowMutations support
+
+### Tests
+- Added 14 new tests for BufferedMutator (`test/test_buffered_mutator.py`)
+- Added 13 new tests for atomic operations (`test/test_atomic_operations.py`)
+- Added 12 new tests for RowMutations and exists (`test/test_row_mutations.py`)
+- Total test suite: 238 tests with comprehensive coverage
+
+### Documentation
+- Updated README.md with new feature examples
+- Updated api_reference.md with comprehensive API documentation
+- Updated advanced_usage.md with detailed usage patterns
+- Added BufferedMutator, atomic operations, and RowMutations documentation
+
+
 ## v1.0.2 - 2026-02-21
 
 - Feature: Added a reproducible custom 3-node HBase cluster for integration testing (ZooKeeper, Master, 3x RegionServers) built from our Dockerfiles under docker/.

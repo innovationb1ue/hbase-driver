@@ -7,7 +7,7 @@ Pure-Python native HBase client (no Thrift). This project implements core HBase 
 
 ## Status
 
-- Integration test status (local): **77 / 77 tests passing** (2026-02-21) using the custom 3-node Docker cluster.
+- Integration test status (local): **238 tests** with comprehensive coverage for all features (2026-03-15).
 
 ## Quick Start
 
@@ -346,6 +346,71 @@ from hbasedriver.operations.increment import Increment
 inc = Increment(b"row1")
 inc.add_column(b"cf", b"counter", 1)
 new_value = table.increment(inc)
+```
+
+#### Append
+
+```python
+from hbasedriver.operations.append import Append
+
+append = Append(b"row1")
+append.add_column(b"cf", b"tags", b",new_tag")
+result = table.append(append)
+new_value = result.get(b"cf", b"tags")
+```
+
+#### Check and Delete
+
+```python
+from hbasedriver.operations.delete import Delete
+
+delete = Delete(b"row1").add_column(b"cf", b"col")
+success = table.check_and_delete(
+    b"row1", b"cf", b"lock", b"", delete  # Delete if lock is empty
+)
+```
+
+#### RowMutations (Atomic Multi-Mutation)
+
+```python
+from hbasedriver.operations import RowMutations, Put, Delete
+
+rm = RowMutations(b"row1")
+rm.add(Put(b"row1").add_column(b"cf", b"status", b"active"))
+rm.add(Delete(b"row1").add_column(b"cf", b"old_field"))
+success = table.mutate_row(rm)  # All mutations applied atomically
+```
+
+#### Exists
+
+```python
+# Check if row exists
+exists = table.exists(Get(b"row1"))
+
+# Check if specific column exists
+exists = table.exists(Get(b"row1").add_column(b"cf", b"col"))
+
+# Check multiple rows at once
+results = table.exists_all([Get(b"row1"), Get(b"row2"), Get(b"row3")])
+```
+
+#### BufferedMutator (Efficient Bulk Writes)
+
+```python
+from hbasedriver.client.buffered_mutator import BufferedMutatorParams
+
+# Using context manager - auto-flush on close
+params = BufferedMutatorParams(write_buffer_size=2*1024*1024)  # 2MB buffer
+with client.get_buffered_mutator(b"default", b"mytable", params) as mutator:
+    for i in range(10000):
+        mutator.mutate(Put(f"row{i}".encode()).add_column(b"cf", b"data", f"value{i}".encode()))
+    # Auto-flushes when exiting context
+
+# Manual flush control
+mutator = client.get_buffered_mutator(b"default", b"mytable")
+mutator.mutate(Put(b"row1").add_column(b"cf", b"col", b"value"))
+mutator.flush()  # Explicit flush
+mutator.close()
 ```
 
 ### Filters

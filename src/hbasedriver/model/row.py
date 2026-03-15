@@ -9,14 +9,23 @@ class Row:
     Represent a row of data in hbase, with the unique rowkey.
     """
 
-    def __init__(self, rowkey: bytes, kv: dict):
+    def __init__(self, rowkey: bytes, kv: dict, exists: bool = True):
         self.rowkey = rowkey
         self.kv = kv
+        self._exists = exists
 
     @property
     def row(self):
         """Backward-compatible alias used by some tests: row -> rowkey"""
         return self.rowkey
+
+    def exists(self) -> bool:
+        """Check if this row exists.
+
+        Returns:
+            True if the row exists, False otherwise
+        """
+        return self._exists
 
     # get the value of target column, return None if not exist.
     def get(self, cf: bytes, qf: bytes):
@@ -28,6 +37,12 @@ class Row:
 
     @staticmethod
     def from_result(result):
+        # Handle existence-only check
+        if hasattr(result, 'exists') and result.exists:
+            # For exists check, we may not have cells but the row exists
+            if len(result.cell) == 0:
+                return Row(b'', {}, exists=True)
+
         # provide no cells, we return None here.
         if len(result.cell) == 0:
             return None
