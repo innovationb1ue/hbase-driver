@@ -17,12 +17,12 @@ znode = "/hbase"
 # locate_master takes a string representing the location of the ZooKeeper
 # quorum. It then asks ZK for the location of the MetaRegionServer.
 # i.e. this gets the region server that holds the hbase:meta table.
-def locate_meta_region(zkquorum: list, establish_connection_timeout=5, missing_znode_retries=5) -> (bytes, bytes):
+def locate_meta_region(zkquorum: list, establish_connection_timeout=15, missing_znode_retries=10) -> (bytes, bytes):
     if type(zkquorum) != list:
         raise ValueError("must provide a list for zookeeper quorum.")
     try:
         for host in zkquorum:
-            zk = KazooClient(hosts=host, timeout=3)
+            zk = KazooClient(hosts=host, timeout=10)
             zk.start(timeout=establish_connection_timeout)
             break
         else:
@@ -72,13 +72,13 @@ def locate_meta_region(zkquorum: list, establish_connection_timeout=5, missing_z
     return hostname, port
 
 
-def locate_master(zk_quorum: list, establish_connection_timeout=5, missing_znode_retries=5):
+def locate_master(zk_quorum: list, establish_connection_timeout=15, missing_znode_retries=10):
     if not isinstance(zk_quorum, list):
         raise ValueError("must provide a list for zookeeper quorum.")
     zk = None
     try:
         for host in zk_quorum:
-            zk = KazooClient(hosts=host, timeout=3)
+            zk = KazooClient(hosts=host, timeout=10)
             zk.start(timeout=establish_connection_timeout)
             break
     except KazooTimeoutError:

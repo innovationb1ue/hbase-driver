@@ -53,7 +53,7 @@ class ConnectionPool:
         - hbase.connection.idle.timeout: Idle connection timeout in seconds (default: 300)
     """
 
-    DEFAULT_POOL_SIZE = 10
+    DEFAULT_POOL_SIZE = 20
     DEFAULT_IDLE_TIMEOUT = 300  # 5 minutes
 
     def __init__(

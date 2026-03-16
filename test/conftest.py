@@ -3,6 +3,7 @@ Pytest configuration and fixtures.
 Handles HBase connection retries and graceful test skipping.
 """
 import os
+import uuid
 import pytest
 from hbasedriver.client.client import Client
 from hbasedriver.common.table_name import TableName
@@ -28,38 +29,72 @@ def hbase_available():
     return False
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def admin(hbase_available):
-    """Get HBase admin connection with retries."""
+    """Get HBase admin connection with retries.
+
+    Module-scoped for better isolation between test modules.
+    """
     max_retries = 30
     last_error = None
-    
+    client = None
+
     for attempt in range(max_retries):
         try:
             client = Client(conf)
-            return client.get_admin()
+            admin = client.get_admin()
+            break
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
                 import time
                 time.sleep(1)
-    
-    pytest.fail(f"Could not connect to HBase admin after {max_retries} retries: {last_error}")
+    else:
+        pytest.fail(f"Could not connect to HBase admin after {max_retries} retries: {last_error}")
+
+    yield admin
+
+    # Cleanup: close client connection
+    if client is not None:
+        try:
+            client.close()
+        except Exception:
+            pass
 
 
-@pytest.fixture(scope="session")
+@pytest.fixture(scope="module")
 def client(hbase_available):
-    """Get HBase client connection with retries."""
+    """Get HBase client connection with retries.
+
+    Module-scoped for better isolation between test modules.
+    """
     max_retries = 30
     last_error = None
-    
+    c = None
+
     for attempt in range(max_retries):
         try:
-            return Client(conf)
+            c = Client(conf)
+            break
         except Exception as e:
             last_error = e
             if attempt < max_retries - 1:
                 import time
                 time.sleep(1)
-    
-    pytest.fail(f"Could not connect to HBase after {max_retries} retries: {last_error}")
+    else:
+        pytest.fail(f"Could not connect to HBase after {max_retries} retries: {last_error}")
+
+    yield c
+
+    # Cleanup: close client connection
+    if c is not None:
+        try:
+            c.close()
+        except Exception:
+            pass
+
+
+@pytest.fixture
+def unique_table_name():
+    """Generate unique table name for each test to avoid collisions."""
+    return f"test_{uuid.uuid4().hex[:8]}"

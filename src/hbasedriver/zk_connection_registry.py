@@ -20,8 +20,8 @@ class ZKConnectionRegistry:
     def __init__(self, conf: dict):
         self.conf = conf
         self.znode_paths = ZNodePaths(conf)
-        self.zk = KazooClient(hosts=self.__build_zk_quorum_server_string(), timeout=3)
-        self.zk.start(timeout=10)
+        self.zk = KazooClient(hosts=self.__build_zk_quorum_server_string(), timeout=10)
+        self.zk.start(timeout=15)
 
     def get_meta_region_locations(self) -> 'RegionLoations':
 

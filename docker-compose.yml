@@ -24,6 +24,12 @@ services:
       timeout: 5s
       retries: 15
       start_period: 20s
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+        reservations:
+          memory: 512M
 
   # ─── HBase Master ─────────────────────────────────────────────
   hbase-master:
@@ -46,6 +52,12 @@ services:
       start_period: 45s
     volumes:
       - hbase-shared-data:/hbase-data
+    deploy:
+      resources:
+        limits:
+          memory: 2G
+        reservations:
+          memory: 1G
 
   # ─── RegionServer 1 ───────────────────────────────────────────
   hbase-rs1:
